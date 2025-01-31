@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO addresses (address, score)\n            VALUES (?, ?)\n            RETURNING id, address, score, created_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "address",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "score",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 3,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "7716fc6fc99deacdcc375a6da7c22bfbb40de770128f19f03bd314a1dabf16c0"
+}

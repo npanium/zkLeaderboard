@@ -1,30 +1,10 @@
+use core::{LeaderboardEntry, LeaderboardInput, QueryResult};
 use risc0_zkvm::guest::env;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-#[derive(Serialize, Deserialize, Clone)]
-struct LeaderboardEntry {
-    address: [u8; 20], // Fixed-size Ethereum address
-    score: u64,
-    proof: Vec<u8>, // Proof of score validity
-}
-
-#[derive(Serialize, Deserialize)]
-struct LeaderboardInput {
-    entries: Vec<LeaderboardEntry>,
-    query_address: [u8; 20], // Fixed-size query address
-}
-
-#[derive(Serialize, Deserialize)]
-struct QueryResult {
-    found: bool,
-    position: usize,
-    total: usize,
-    is_top_50: bool,
-}
-
 fn main() {
-    // Read the input containing both the data and query
+    env::log("Starting guest program");
     let input: LeaderboardInput = env::read();
 
     // Verify all entries first
@@ -35,6 +15,7 @@ fn main() {
         }
     }
 
+    env::log(&format!("Found {} valid entries", valid_entries.len()));
     // Sort valid entries by score in descending order
     valid_entries.sort_by(|a, b| b.score.cmp(&a.score));
 
@@ -66,7 +47,10 @@ fn main() {
         is_top_50,
     };
 
-    // Commit the result
+    env::log(&format!(
+        "Query result: found={}, position={}",
+        result.found, result.position
+    ));
     env::commit(&result);
 }
 

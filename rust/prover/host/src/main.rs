@@ -1,31 +1,10 @@
 use ciborium::into_writer;
+use core::{LeaderboardEntry, LeaderboardInput, QueryResult};
 use hex::encode;
 use methods::{ZKLEADERBOARD_GUEST_ELF, ZKLEADERBOARD_GUEST_ID};
 use risc0_zkvm::{default_prover, ExecutorEnv};
-use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{env::args, fs::File};
-
-#[derive(Serialize, Deserialize, Clone)]
-struct LeaderboardEntry {
-    address: [u8; 20], // Fixed-size Ethereum address
-    score: u64,
-    proof: Vec<u8>, // Proof of score validity
-}
-
-#[derive(Serialize, Deserialize)]
-struct LeaderboardInput {
-    entries: Vec<LeaderboardEntry>,
-    query_address: [u8; 20], // Fixed-size query address
-}
-
-#[derive(Serialize, Deserialize)]
-struct QueryResult {
-    found: bool,
-    position: usize,
-    total: usize,
-    is_top_50: bool,
-}
 
 fn main() {
     // Get query address from command line
