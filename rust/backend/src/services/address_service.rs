@@ -93,3 +93,28 @@ pub async fn get_stored_addresses(
         })
         .collect())
 }
+
+pub async fn get_all_addresses(pool: &SqlitePool) -> Result<Vec<AddressScore>, anyhow::Error> {
+    let addresses = sqlx::query!(
+        r#"
+        SELECT id, address, score, created_at
+        FROM addresses
+        ORDER BY created_at DESC
+        "#
+    )
+    .fetch_all(pool)
+    .await?;
+
+    Ok(addresses
+        .into_iter()
+        .map(|row| AddressScore {
+            id: Some(row.id),
+            address: row.address,
+            score: row.score as u32,
+            created_at: Some(chrono::DateTime::from_naive_utc_and_offset(
+                row.created_at.expect("Time created not found for row"),
+                chrono::Utc,
+            )),
+        })
+        .collect())
+}

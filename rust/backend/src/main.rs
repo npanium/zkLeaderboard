@@ -1,7 +1,7 @@
 use actix_cors::Cors;
 use actix_web::{
     web::{self, Data},
-    App, HttpServer,
+    App, HttpResponse, HttpServer,
 };
 use db::init_db;
 use log::info;
@@ -14,6 +14,13 @@ mod services;
 
 use dotenv::dotenv;
 //const DATABASE_URL: &str = "sqlite://addresses.db?mode=rwc";
+
+async fn not_found() -> Result<HttpResponse, actix_web::Error> {
+    Ok(HttpResponse::NotFound().json(serde_json::json!({
+        "status": "error",
+        "message": "Route not found"
+    })))
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -37,7 +44,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(cors)
             .app_data(Data::new(pool.clone()))
             .service(
-                web::scope("/api")
+                web::scope("/api/v0")
                     .route("/addresses", web::get().to(handlers::get_addresses))
                     .route(
                         "/addresses/generate",
@@ -46,8 +53,17 @@ async fn main() -> std::io::Result<()> {
                     .route(
                         "/addresses/stored",
                         web::get().to(handlers::get_stored_addresses),
+                    )
+                    .route(
+                        "/addresses/hash",
+                        web::get().to(handlers::hash_stored_addresses),
+                    )
+                    .route(
+                        "/addresses/hash/all",
+                        web::get().to(handlers::hash_all_addresses),
                     ),
             )
+            .default_service(web::route().to(not_found))
     })
     .bind(("127.0.0.1", port))?
     .run()
