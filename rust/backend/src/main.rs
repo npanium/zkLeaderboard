@@ -5,6 +5,7 @@ use actix_web::{
 };
 use db::init_db;
 use log::info;
+use services::contract_service::ContractService;
 use std::env;
 
 mod db;
@@ -37,12 +38,21 @@ async fn main() -> std::io::Result<()> {
     //     .await
     //     .expect("Failed to connect to db");
 
+    let contract_service = ContractService::new(
+        &env::var("RPC_URL").expect("RPC_URL not set"),
+        &env::var("PRIVATE_KEY").expect("PRIVATE_KEY not set"),
+        &env::var("CONTRACT_ADDRESS").expect("CONTRACT_ADDRESS not set"),
+    )
+    .await
+    .expect("Failed to initialize contract service");
+
     HttpServer::new(move || {
         let cors = Cors::permissive(); // Configure based on your needs
 
         App::new()
             .wrap(cors)
             .app_data(Data::new(pool.clone()))
+            .app_data(Data::new(contract_service.clone()))
             .service(
                 web::scope("/api/v0")
                     .route("/addresses", web::get().to(handlers::get_addresses))
@@ -61,6 +71,10 @@ async fn main() -> std::io::Result<()> {
                     .route(
                         "/addresses/hash/all",
                         web::get().to(handlers::hash_all_addresses),
+                    )
+                    .route(
+                        "/addresses/hash/store",
+                        web::post().to(handlers::hash_and_store_all_addresses),
                     ),
             )
             .default_service(web::route().to(not_found))
