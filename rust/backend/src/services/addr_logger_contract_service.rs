@@ -4,24 +4,26 @@ use ethers::{
     prelude::abigen,
     providers::{Http, Middleware, Provider},
     signers::{LocalWallet, Signer},
-    types::{Address, H256, U256},
+    types::Address,
 };
 use std::sync::Arc;
 
 // Generate contract bindings
 abigen!(
-    HashStorage,
+    AddrLogger,
     r#"[
-        function storeHashRecord(bytes32 hash, uint256 timestamp, uint256 record_count) external returns (uint8[] memory)
+    function logAddresses(address[] memory addresses) external returns (uint8[] memory)
     ]"#
 );
+
 #[derive(Clone)]
-pub struct ContractService {
+
+pub struct AddrLoggerContractService {
     client: Arc<SignerMiddleware<Provider<Http>, LocalWallet>>,
-    contract: HashStorage<SignerMiddleware<Provider<Http>, LocalWallet>>,
+    contract: AddrLogger<SignerMiddleware<Provider<Http>, LocalWallet>>,
 }
 
-impl ContractService {
+impl AddrLoggerContractService {
     pub async fn new(rpc_url: &str, private_key: &str, contract_address: &str) -> Result<Self> {
         let provider = Provider::<Http>::try_from(rpc_url)?;
         let wallet = private_key.parse::<LocalWallet>()?;
@@ -35,24 +37,15 @@ impl ContractService {
             .parse::<Address>()
             .map_err(|e| anyhow::anyhow!("Failed to parse contract address: {}", e))?;
 
-        let contract = HashStorage::new(address, client.clone());
+        let contract = AddrLogger::new(address, client.clone());
 
         Ok(Self { client, contract })
     }
 
-    pub async fn store_hash(
-        &self,
-        hash: [u8; 32],
-        timestamp: i64,
-        record_count: usize,
-    ) -> Result<Vec<u8>> {
-        let hash_bytes = H256::from(hash);
-        let timestamp = U256::from(timestamp as u64);
-        let record_count = U256::from(record_count);
-
+    pub async fn log_addresses(&self, addresses: Vec<Address>) -> Result<Vec<u8>> {
         let tx = self
             .contract
-            .store_hash_record(hash_bytes.into(), timestamp, record_count)
+            .log_addresses(addresses)
             .send()
             .await?
             .await?

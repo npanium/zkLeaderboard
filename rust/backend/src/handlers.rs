@@ -1,6 +1,7 @@
 use crate::models::AddressQueryParams;
 use crate::models::PaginationParams;
-use crate::services::contract_service::ContractService;
+use crate::services::addr_logger_contract_service::AddrLoggerContractService;
+use crate::services::hash_contract_service::HashContractService;
 use crate::services::{address_service, hash_service};
 use actix_web::error::ErrorInternalServerError;
 use actix_web::{web, HttpResponse, Result};
@@ -159,7 +160,7 @@ pub async fn hash_all_addresses(
 
 pub async fn hash_and_store_all_addresses(
     pool: web::Data<SqlitePool>,
-    contract_service: web::Data<ContractService>,
+    contract_service: web::Data<HashContractService>,
 ) -> Result<HttpResponse, actix_web::Error> {
     debug!("hash_and_store_all_addresses: Starting process");
 
@@ -237,5 +238,43 @@ pub async fn hash_and_store_all_addresses(
         "timestamp": hash_result.timestamp,
         "record_count": hash_result.record_count,
         "transaction_result": hex::encode(result)
+    })))
+}
+
+pub async fn log_random_addresses(
+    pool: web::Data<SqlitePool>,
+    contract_service: web::Data<AddrLoggerContractService>,
+    query: web::Query<AddressQueryParams>,
+) -> Result<HttpResponse, actix_web::Error> {
+    let count = query.count.unwrap_or(5);
+    debug!("log_random_addresses: Starting with count={}", count);
+
+    let addresses = sqlx::query!(
+        "SELECT address FROM addresses ORDER BY RANDOM() LIMIT ?",
+        count
+    )
+    .fetch_all(pool.get_ref())
+    .await
+    .map_err(ErrorInternalServerError)?;
+
+    debug!("Selected addresses:");
+    for row in &addresses {
+        debug!("Address: {}", row.address);
+    }
+
+    // Convert string addresses to H160 (Address) type
+    let eth_addresses: Vec<ethers::types::Address> = addresses
+        .into_iter()
+        .filter_map(|row| row.address.parse().ok())
+        .collect();
+
+    let transaction_result = contract_service
+        .log_addresses(eth_addresses)
+        .await
+        .map_err(ErrorInternalServerError)?;
+
+    Ok(HttpResponse::Ok().json(json!({
+        "count": count,
+        "transaction_hash": hex::encode(transaction_result)
     })))
 }

@@ -4,8 +4,13 @@ use actix_web::{
     App, HttpResponse, HttpServer,
 };
 use db::init_db;
+use dotenv::dotenv;
 use log::info;
-use services::contract_service::ContractService;
+
+use services::{
+    addr_logger_contract_service::AddrLoggerContractService,
+    hash_contract_service::HashContractService,
+};
 use std::env;
 
 mod db;
@@ -13,7 +18,6 @@ mod handlers;
 mod models;
 mod services;
 
-use dotenv::dotenv;
 //const DATABASE_URL: &str = "sqlite://addresses.db?mode=rwc";
 
 async fn not_found() -> Result<HttpResponse, actix_web::Error> {
@@ -38,13 +42,21 @@ async fn main() -> std::io::Result<()> {
     //     .await
     //     .expect("Failed to connect to db");
 
-    let contract_service = ContractService::new(
+    let hash_contract_service = HashContractService::new(
         &env::var("RPC_URL").expect("RPC_URL not set"),
         &env::var("PRIVATE_KEY").expect("PRIVATE_KEY not set"),
-        &env::var("CONTRACT_ADDRESS").expect("CONTRACT_ADDRESS not set"),
+        &env::var("HASH_CONTRACT_ADDRESS").expect("HASH_CONTRACT_ADDRESS not set"),
     )
     .await
-    .expect("Failed to initialize contract service");
+    .expect("Failed to initialize hash contract service");
+
+    let addr_logger_contract_service = AddrLoggerContractService::new(
+        &env::var("RPC_URL").expect("RPC_URL not set"),
+        &env::var("PRIVATE_KEY").expect("PRIVATE_KEY not set"),
+        &env::var("ADDR_LOGGER_CONTRACT_ADDRESS").expect("ADDR_LOGGER_CONTRACT_ADDRESS not set"),
+    )
+    .await
+    .expect("Failed to initialize address logger contract service");
 
     HttpServer::new(move || {
         let cors = Cors::permissive(); // Configure based on your needs
@@ -52,29 +64,25 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(cors)
             .app_data(Data::new(pool.clone()))
-            .app_data(Data::new(contract_service.clone()))
+            .app_data(Data::new(hash_contract_service.clone()))
+            .app_data(Data::new(addr_logger_contract_service.clone()))
             .service(
-                web::scope("/api/v0")
-                    .route("/addresses", web::get().to(handlers::get_addresses))
+                web::scope("/api/v0/addresses")
+                    .route("", web::get().to(handlers::get_addresses))
                     .route(
-                        "/addresses/generate",
+                        "/generate",
                         web::post().to(handlers::generate_and_store_addresses),
                     )
+                    .route("/stored", web::get().to(handlers::get_stored_addresses))
+                    .route("/hash", web::get().to(handlers::hash_stored_addresses))
+                    .route("/hash/all", web::get().to(handlers::hash_all_addresses))
                     .route(
-                        "/addresses/stored",
-                        web::get().to(handlers::get_stored_addresses),
-                    )
-                    .route(
-                        "/addresses/hash",
-                        web::get().to(handlers::hash_stored_addresses),
-                    )
-                    .route(
-                        "/addresses/hash/all",
-                        web::get().to(handlers::hash_all_addresses),
-                    )
-                    .route(
-                        "/addresses/hash/store",
+                        "/hash/store",
                         web::post().to(handlers::hash_and_store_all_addresses),
+                    )
+                    .route(
+                        "/random-log",
+                        web::post().to(handlers::log_random_addresses),
                     ),
             )
             .default_service(web::route().to(not_found))
