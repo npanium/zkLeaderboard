@@ -18,6 +18,8 @@ dotenv = "0.15.0"
 tokio = { version = "1.12.0", features = ["full"] }
 ethers = "2.0"
 eyre = "0.6.8"
+e2e = { git = "https://github.com/TucksonDev/e2e-lib.git" }
+
 
 [features]
 export-abi = ["stylus-sdk/export-abi"]
