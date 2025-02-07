@@ -14,6 +14,26 @@ pub struct AddressQueryParams {
     pub count: Option<u32>,
 }
 
+#[derive(Deserialize)]
+pub struct PlaceBetRequest {
+    pub selected_address: String,
+    pub position: bool,
+    pub amount: String, // ETH amount in string format for precision
+}
+
+#[derive(Serialize)]
+pub struct BetResponse {
+    pub bettor: String,
+    pub selected_address: String,
+    pub position: bool,
+    pub amount: String,
+}
+
+#[derive(Serialize)]
+pub struct BetCountResponse {
+    pub count: String, // U256 as string
+}
+
 #[derive(Debug, Deserialize)]
 pub struct PaginationParams {
     pub page: Option<u32>,

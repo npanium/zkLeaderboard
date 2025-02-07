@@ -4,7 +4,7 @@ use ethers::{
     prelude::abigen,
     providers::{Http, Middleware, Provider},
     signers::{LocalWallet, Signer},
-    types::Address,
+    types::{Address, U256},
 };
 use std::sync::Arc;
 
@@ -12,7 +12,10 @@ use std::sync::Arc;
 abigen!(
     AddrLogger,
     r#"[
-    function logAddresses(address[] memory addresses) external returns (uint8[] memory)
+        function logAddresses(address[] memory addresses) external returns (uint8[] memory)
+        function placeBet(address selected_address, bool position) external payable returns (uint8[] memory)
+        function getBet(uint256 index) external view returns (address, address, bool, uint256)
+        function getBetCount() external view returns (uint256)
     ]"#
 );
 
@@ -57,5 +60,36 @@ impl AddrLoggerContractService {
             .next()
             .map(|log| log.data.to_vec())
             .unwrap_or_default())
+    }
+
+    pub async fn place_bet(
+        &self,
+        selected_address: Address,
+        position: bool,
+        value: U256,
+    ) -> Result<Vec<u8>> {
+        let tx = self
+            .contract
+            .place_bet(selected_address, position)
+            .value(value)
+            .send()
+            .await?
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Transaction failed"))?;
+
+        Ok(tx
+            .logs
+            .into_iter()
+            .next()
+            .map(|log| log.data.to_vec())
+            .unwrap_or_default())
+    }
+
+    pub async fn get_bet(&self, index: U256) -> Result<(Address, Address, bool, U256)> {
+        Ok(self.contract.get_bet(index).call().await?)
+    }
+
+    pub async fn get_bet_count(&self) -> Result<U256> {
+        Ok(self.contract.get_bet_count().call().await?)
     }
 }

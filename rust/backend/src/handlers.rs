@@ -1,10 +1,13 @@
-use crate::models::AddressQueryParams;
-use crate::models::PaginationParams;
+use crate::models::{
+    AddressQueryParams, BetCountResponse, BetResponse, PaginationParams, PlaceBetRequest,
+};
 use crate::services::addr_logger_contract_service::AddrLoggerContractService;
 use crate::services::hash_contract_service::HashContractService;
 use crate::services::{address_service, hash_service};
-use actix_web::error::ErrorInternalServerError;
+use actix_web::error::{ErrorBadRequest, ErrorInternalServerError};
 use actix_web::{web, HttpResponse, Result};
+use ethers::types::{Address, U256};
+use ethers::utils::parse_ether;
 use log::{debug, error, info};
 use serde_json::json;
 use sqlx::SqlitePool;
@@ -263,7 +266,7 @@ pub async fn log_random_addresses(
     }
 
     // Convert string addresses to H160 (Address) type
-    let eth_addresses: Vec<ethers::types::Address> = addresses
+    let eth_addresses: Vec<Address> = addresses
         .into_iter()
         .filter_map(|row| row.address.parse().ok())
         .collect();
@@ -277,4 +280,87 @@ pub async fn log_random_addresses(
         "count": count,
         "transaction_hash": hex::encode(transaction_result)
     })))
+}
+
+/// Place a new bet on an address
+/// Endpoint: POST /api/v0/addresses/bets
+/// Body: {
+///     "selected_address": "0x...",
+///     "position": true,
+///     "amount": "0.1"
+/// }
+pub async fn place_bet(
+    contract_service: web::Data<AddrLoggerContractService>,
+    bet_request: web::Json<PlaceBetRequest>,
+) -> Result<HttpResponse, actix_web::Error> {
+    debug!("place_bet: Processing bet request");
+
+    let selected_address = bet_request
+        .selected_address
+        .parse::<Address>()
+        .map_err(|e| {
+            error!("place_bet: Invalid address format: {}", e);
+            ErrorBadRequest("Invalid address format")
+        })?;
+
+    let amount = parse_ether(bet_request.amount.as_str()).map_err(|e| {
+        error!("place_bet: Invalid ETH amount: {}", e);
+        ErrorBadRequest("Invalid ETH amount")
+    })?;
+
+    let transaction_result = contract_service
+        .place_bet(selected_address, bet_request.position, amount)
+        .await
+        .map_err(|e| {
+            error!("place_bet: Transaction failed: {}", e);
+            ErrorInternalServerError("Failed to place bet")
+        })?;
+
+    Ok(HttpResponse::Ok().json(json!({
+        "transaction_result": hex::encode(transaction_result)
+    })))
+}
+
+/// Get details of a specific bet by index
+/// Endpoint: GET /api/v0/addresses/bets/{index}
+/// Example: GET /api/v0/addresses/bets/0 for first bet
+pub async fn get_bet(
+    contract_service: web::Data<AddrLoggerContractService>,
+    index: web::Path<u64>,
+) -> Result<HttpResponse, actix_web::Error> {
+    debug!("get_bet: Retrieving bet at index {}", index);
+
+    let bet = contract_service
+        .get_bet(U256::from(index.into_inner()))
+        .await
+        .map_err(|e| {
+            error!("get_bet: Failed to retrieve bet: {}", e);
+            ErrorInternalServerError("Failed to retrieve bet")
+        })?;
+
+    let response = BetResponse {
+        bettor: format!("{:?}", bet.0),
+        selected_address: format!("{:?}", bet.1),
+        position: bet.2,
+        amount: bet.3.to_string(),
+    };
+
+    Ok(HttpResponse::Ok().json(response))
+}
+
+/// Get total number of bets placed
+/// Endpoint: GET /api/v0/addresses/bets/count
+pub async fn get_bet_count(
+    contract_service: web::Data<AddrLoggerContractService>,
+) -> Result<HttpResponse, actix_web::Error> {
+    debug!("get_bet_count: Retrieving total bet count");
+
+    let count = contract_service.get_bet_count().await.map_err(|e| {
+        error!("get_bet_count: Failed to retrieve count: {}", e);
+        ErrorInternalServerError("Failed to retrieve bet count")
+    })?;
+
+    Ok(HttpResponse::Ok().json(BetCountResponse {
+        count: count.to_string(),
+    }))
 }

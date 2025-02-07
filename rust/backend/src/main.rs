@@ -83,7 +83,11 @@ async fn main() -> std::io::Result<()> {
                     .route(
                         "/random-log",
                         web::post().to(handlers::log_random_addresses),
-                    ),
+                    )
+                    // Static routes must come before dynamic routes with parameters
+                    .route("/bets/count", web::get().to(handlers::get_bet_count))
+                    .route("/bets", web::post().to(handlers::place_bet))
+                    .route("/bets/{index}", web::get().to(handlers::get_bet)),
             )
             .default_service(web::route().to(not_found))
     })
