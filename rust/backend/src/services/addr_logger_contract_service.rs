@@ -12,10 +12,20 @@ use std::sync::Arc;
 abigen!(
     AddrLogger,
     r#"[
-        function logAddresses(address[] memory addresses) external returns (uint8[] memory)
-        function placeBet(address selected_address, bool position) external payable returns (uint8[] memory)
+        function init(address operator, address treasury, address token) external returns (uint8[] memory)
+        function startBettingWindow(address[] memory addresses) external returns (uint8[] memory)
+        function closeBettingWindow() external returns (uint8[] memory)
+        function placeBet(address selected_address, bool position, uint256 amount) external returns (uint8[] memory)
+        function getWindowActive() external view returns (bool)
         function getBet(uint256 index) external view returns (address, address, bool, uint256)
         function getBetCount() external view returns (uint256)
+        function processPayouts(bool[] memory winners) external
+        function isValidAddress(address _address) external view returns (bool)
+        function getOperator() external view returns (address)
+        function getTreasury() external view returns (address)
+        function getToken() external view returns (address)
+        function getUpAmount(uint256 addr_index) external view returns (uint256)
+        function getDownAmount(uint256 addr_index) external view returns (uint256)
     ]"#
 );
 
@@ -45,10 +55,49 @@ impl AddrLoggerContractService {
         Ok(Self { client, contract })
     }
 
-    pub async fn log_addresses(&self, addresses: Vec<Address>) -> Result<Vec<u8>> {
+    pub async fn init(
+        &self,
+        operator: Address,
+        treasury: Address,
+        token: Address,
+    ) -> Result<Vec<u8>> {
         let tx = self
             .contract
-            .log_addresses(addresses)
+            .init(operator, treasury, token)
+            .send()
+            .await?
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Transaction failed"))?;
+
+        Ok(tx
+            .logs
+            .into_iter()
+            .next()
+            .map(|log| log.data.to_vec())
+            .unwrap_or_default())
+    }
+
+    pub async fn start_betting_window(&self, addresses: Vec<Address>) -> Result<Vec<u8>> {
+        let tx = self
+            .contract
+            .start_betting_window(addresses)
+            .send()
+            .await?
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Transaction failed"))?;
+
+        Ok(tx
+            .logs
+            .into_iter()
+            .next()
+            .map(|log| log.data.to_vec())
+            .unwrap_or_default())
+    }
+
+    pub async fn close_betting_window(&self) -> Result<Vec<u8>> {
+        let tx = self
+            .contract
+            .close_betting_window()
             .send()
             .await?
             .await?
@@ -66,12 +115,11 @@ impl AddrLoggerContractService {
         &self,
         selected_address: Address,
         position: bool,
-        value: U256,
+        amount: U256,
     ) -> Result<Vec<u8>> {
         let tx = self
             .contract
-            .place_bet(selected_address, position)
-            .value(value)
+            .place_bet(selected_address, position, amount)
             .send()
             .await?
             .await?
@@ -85,11 +133,44 @@ impl AddrLoggerContractService {
             .unwrap_or_default())
     }
 
+    pub async fn get_window_active(&self) -> Result<bool> {
+        Ok(self.contract.get_window_active().call().await?)
+    }
+
     pub async fn get_bet(&self, index: U256) -> Result<(Address, Address, bool, U256)> {
         Ok(self.contract.get_bet(index).call().await?)
     }
 
     pub async fn get_bet_count(&self) -> Result<U256> {
         Ok(self.contract.get_bet_count().call().await?)
+    }
+
+    pub async fn process_payouts(&self, winners: Vec<bool>) -> Result<()> {
+        self.contract.process_payouts(winners).send().await?.await?;
+        Ok(())
+    }
+
+    pub async fn is_valid_address(&self, address: Address) -> Result<bool> {
+        Ok(self.contract.is_valid_address(address).call().await?)
+    }
+
+    pub async fn get_operator(&self) -> Result<Address> {
+        Ok(self.contract.get_operator().call().await?)
+    }
+
+    pub async fn get_treasury(&self) -> Result<Address> {
+        Ok(self.contract.get_treasury().call().await?)
+    }
+
+    pub async fn get_token(&self) -> Result<Address> {
+        Ok(self.contract.get_token().call().await?)
+    }
+
+    pub async fn get_up_amount(&self, addr_index: U256) -> Result<U256> {
+        Ok(self.contract.get_up_amount(addr_index).call().await?)
+    }
+
+    pub async fn get_down_amount(&self, addr_index: U256) -> Result<U256> {
+        Ok(self.contract.get_down_amount(addr_index).call().await?)
     }
 }

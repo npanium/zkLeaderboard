@@ -9,9 +9,30 @@ pub struct AddressScore {
     pub created_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
+#[derive(Debug, Serialize)]
+pub struct HashResponse {
+    // pub serialized_data: String,
+    pub hash: String,
+    pub timestamp: i64,
+    pub record_count: usize,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct AddressQueryParams {
     pub count: Option<u32>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PaginationParams {
+    pub page: Option<u32>,
+    pub per_page: Option<u32>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct InitRequest {
+    pub operator: String,
+    pub treasury: String,
+    pub token: String,
 }
 
 #[derive(Deserialize)]
@@ -34,16 +55,20 @@ pub struct BetCountResponse {
     pub count: String, // U256 as string
 }
 
-#[derive(Debug, Deserialize)]
-pub struct PaginationParams {
-    pub page: Option<u32>,
-    pub per_page: Option<u32>,
+#[derive(Debug, Serialize)]
+pub struct WindowStatusResponse {
+    pub active: bool,
 }
 
 #[derive(Debug, Serialize)]
-pub struct HashResponse {
-    // pub serialized_data: String,
-    pub hash: String,
-    pub timestamp: i64,
-    pub record_count: usize,
+pub struct BettingAmountsResponse {
+    pub up_amount: String,
+    pub down_amount: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ContractAddressesResponse {
+    pub operator: String,
+    pub treasury: String,
+    pub token: String,
 }

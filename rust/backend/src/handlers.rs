@@ -1,10 +1,13 @@
+use std::env;
+
 use crate::models::{
-    AddressQueryParams, BetCountResponse, BetResponse, PaginationParams, PlaceBetRequest,
+    AddressQueryParams, BetCountResponse, BetResponse, BettingAmountsResponse, InitRequest,
+    PaginationParams, PlaceBetRequest, WindowStatusResponse,
 };
 use crate::services::addr_logger_contract_service::AddrLoggerContractService;
 use crate::services::hash_contract_service::HashContractService;
 use crate::services::{address_service, hash_service};
-use actix_web::error::{ErrorBadRequest, ErrorInternalServerError};
+use actix_web::error::{ErrorBadRequest, ErrorForbidden, ErrorInternalServerError};
 use actix_web::{web, HttpResponse, Result};
 use ethers::types::{Address, U256};
 use ethers::utils::parse_ether;
@@ -244,13 +247,62 @@ pub async fn hash_and_store_all_addresses(
     })))
 }
 
-pub async fn log_random_addresses(
+/// Initialize the contract with operator, treasury and token addresses
+pub async fn init_contract(
+    contract_service: web::Data<AddrLoggerContractService>,
+    init_request: web::Json<InitRequest>,
+) -> Result<HttpResponse, actix_web::Error> {
+    debug!("init_contract: Starting contract initialization");
+
+    let operator = init_request.operator.parse::<Address>().map_err(|e| {
+        error!("init_contract: Invalid operator address: {}", e);
+        ErrorBadRequest("Invalid operator address")
+    })?;
+
+    let treasury = init_request.treasury.parse::<Address>().map_err(|e| {
+        error!("init_contract: Invalid treasury address: {}", e);
+        ErrorBadRequest("Invalid treasury address")
+    })?;
+
+    let token = env::var("TOKEN_CONTRACT_ADDRESS")
+        .map_err(|_| {
+            error!("init_contract: TOKEN_CONTRACT_ADDRESS not set in environment");
+            ErrorInternalServerError("Token address not configured")
+        })?
+        .parse::<Address>()
+        .map_err(|e| {
+            error!("init_contract: Invalid token address in environment: {}", e);
+            ErrorInternalServerError("Invalid token address configuration")
+        })?;
+
+    let transaction_result = contract_service
+        .init(operator, treasury, token)
+        .await
+        .map_err(|e| {
+            error!("init_contract: Transaction failed: {}", e);
+            ErrorInternalServerError("Failed to initialize contract")
+        })?;
+
+    Ok(HttpResponse::Ok().json(json!({
+        "transaction_result": hex::encode(transaction_result)
+    })))
+}
+
+pub async fn start_betting_window(
     pool: web::Data<SqlitePool>,
     contract_service: web::Data<AddrLoggerContractService>,
     query: web::Query<AddressQueryParams>,
 ) -> Result<HttpResponse, actix_web::Error> {
     let count = query.count.unwrap_or(5);
-    debug!("log_random_addresses: Starting with count={}", count);
+    debug!("start_betting_window: Starting with count={}", count);
+
+    // Check if a window is already active
+    if contract_service.get_window_active().await.map_err(|e| {
+        error!("start_betting_window: Failed to check window status: {}", e);
+        ErrorInternalServerError("Failed to check window status")
+    })? {
+        return Err(ErrorForbidden("A betting window is already active"));
+    }
 
     let addresses = sqlx::query!(
         "SELECT address FROM addresses ORDER BY RANDOM() LIMIT ?",
@@ -260,25 +312,42 @@ pub async fn log_random_addresses(
     .await
     .map_err(ErrorInternalServerError)?;
 
-    debug!("Selected addresses:");
-    for row in &addresses {
-        debug!("Address: {}", row.address);
-    }
-
-    // Convert string addresses to H160 (Address) type
     let eth_addresses: Vec<Address> = addresses
         .into_iter()
         .filter_map(|row| row.address.parse().ok())
         .collect();
 
     let transaction_result = contract_service
-        .log_addresses(eth_addresses)
+        .start_betting_window(eth_addresses)
         .await
         .map_err(ErrorInternalServerError)?;
 
     Ok(HttpResponse::Ok().json(json!({
         "count": count,
-        "transaction_hash": hex::encode(transaction_result)
+        "transaction_result": hex::encode(transaction_result)
+    })))
+}
+
+pub async fn close_betting_window(
+    contract_service: web::Data<AddrLoggerContractService>,
+) -> Result<HttpResponse, actix_web::Error> {
+    debug!("close_betting_window: Closing current betting window");
+
+    // Check if a window is active
+    if !contract_service.get_window_active().await.map_err(|e| {
+        error!("close_betting_window: Failed to check window status: {}", e);
+        ErrorInternalServerError("Failed to check window status")
+    })? {
+        return Err(ErrorForbidden("No active betting window found"));
+    }
+
+    let transaction_result = contract_service.close_betting_window().await.map_err(|e| {
+        error!("close_betting_window: Transaction failed: {}", e);
+        ErrorInternalServerError("Failed to close betting window")
+    })?;
+
+    Ok(HttpResponse::Ok().json(json!({
+        "transaction_result": hex::encode(transaction_result)
     })))
 }
 
@@ -295,6 +364,14 @@ pub async fn place_bet(
 ) -> Result<HttpResponse, actix_web::Error> {
     debug!("place_bet: Processing bet request");
 
+    // Check if betting window is active
+    if !contract_service.get_window_active().await.map_err(|e| {
+        error!("place_bet: Failed to check window status: {}", e);
+        ErrorInternalServerError("Failed to check window status")
+    })? {
+        return Err(ErrorForbidden("No active betting window"));
+    }
+
     let selected_address = bet_request
         .selected_address
         .parse::<Address>()
@@ -303,9 +380,23 @@ pub async fn place_bet(
             ErrorBadRequest("Invalid address format")
         })?;
 
-    let amount = parse_ether(bet_request.amount.as_str()).map_err(|e| {
-        error!("place_bet: Invalid ETH amount: {}", e);
-        ErrorBadRequest("Invalid ETH amount")
+    // Verify if address is valid for current window
+    if !contract_service
+        .is_valid_address(selected_address)
+        .await
+        .map_err(|e| {
+            error!("place_bet: Failed to validate address: {}", e);
+            ErrorInternalServerError("Failed to validate address")
+        })?
+    {
+        return Err(ErrorBadRequest(
+            "Invalid address for current betting window",
+        ));
+    }
+
+    let amount = U256::from_dec_str(&bet_request.amount).map_err(|e| {
+        error!("place_bet: Invalid amount format: {}", e);
+        ErrorBadRequest("Invalid amount format")
     })?;
 
     let transaction_result = contract_service
@@ -318,6 +409,84 @@ pub async fn place_bet(
 
     Ok(HttpResponse::Ok().json(json!({
         "transaction_result": hex::encode(transaction_result)
+    })))
+}
+
+pub async fn get_window_status(
+    contract_service: web::Data<AddrLoggerContractService>,
+) -> Result<HttpResponse, actix_web::Error> {
+    debug!("get_window_status: Checking betting window status");
+
+    let is_active = contract_service.get_window_active().await.map_err(|e| {
+        error!("get_window_status: Failed to get window status: {}", e);
+        ErrorInternalServerError("Failed to get window status")
+    })?;
+
+    Ok(HttpResponse::Ok().json(WindowStatusResponse { active: is_active }))
+}
+
+pub async fn get_betting_amounts(
+    contract_service: web::Data<AddrLoggerContractService>,
+    index: web::Path<u64>,
+) -> Result<HttpResponse, actix_web::Error> {
+    let addr_index = U256::from(index.into_inner());
+    debug!(
+        "get_betting_amounts: Retrieving amounts for index {}",
+        addr_index
+    );
+
+    let up_amount = contract_service
+        .get_up_amount(addr_index)
+        .await
+        .map_err(|e| {
+            error!("get_betting_amounts: Failed to get up amount: {}", e);
+            ErrorInternalServerError("Failed to get up amount")
+        })?;
+
+    let down_amount = contract_service
+        .get_down_amount(addr_index)
+        .await
+        .map_err(|e| {
+            error!("get_betting_amounts: Failed to get down amount: {}", e);
+            ErrorInternalServerError("Failed to get down amount")
+        })?;
+
+    Ok(HttpResponse::Ok().json(BettingAmountsResponse {
+        up_amount: up_amount.to_string(),
+        down_amount: down_amount.to_string(),
+    }))
+}
+
+pub async fn process_payouts(
+    contract_service: web::Data<AddrLoggerContractService>,
+    winners: web::Json<Vec<bool>>,
+) -> Result<HttpResponse, actix_web::Error> {
+    debug!(
+        "process_payouts: Processing payouts for {} addresses",
+        winners.len()
+    );
+
+    // Check if betting window is closed
+    if contract_service.get_window_active().await.map_err(|e| {
+        error!("process_payouts: Failed to check window status: {}", e);
+        ErrorInternalServerError("Failed to check window status")
+    })? {
+        return Err(ErrorForbidden(
+            "Betting window must be closed before processing payouts",
+        ));
+    }
+
+    contract_service
+        .process_payouts(winners.into_inner())
+        .await
+        .map_err(|e| {
+            error!("process_payouts: Failed to process payouts: {}", e);
+            ErrorInternalServerError("Failed to process payouts")
+        })?;
+
+    Ok(HttpResponse::Ok().json(json!({
+        "status": "success",
+        "message": "Payouts processed successfully"
     })))
 }
 
@@ -350,6 +519,7 @@ pub async fn get_bet(
 
 /// Get total number of bets placed
 /// Endpoint: GET /api/v0/addresses/bets/count
+
 pub async fn get_bet_count(
     contract_service: web::Data<AddrLoggerContractService>,
 ) -> Result<HttpResponse, actix_web::Error> {

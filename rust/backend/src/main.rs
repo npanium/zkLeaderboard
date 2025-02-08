@@ -69,25 +69,41 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::scope("/api/v0/addresses")
                     .route("", web::get().to(handlers::get_addresses))
-                    .route(
-                        "/generate",
-                        web::post().to(handlers::generate_and_store_addresses),
-                    )
-                    .route("/stored", web::get().to(handlers::get_stored_addresses))
                     .route("/hash", web::get().to(handlers::hash_stored_addresses))
                     .route("/hash/all", web::get().to(handlers::hash_all_addresses))
                     .route(
                         "/hash/store",
                         web::post().to(handlers::hash_and_store_all_addresses),
                     )
+                    // Contract initialization
+                    .route("/init", web::post().to(handlers::init_contract))
+                    // Betting window management
                     .route(
-                        "/random-log",
-                        web::post().to(handlers::log_random_addresses),
+                        "/window/start",
+                        web::post().to(handlers::start_betting_window),
                     )
+                    .route(
+                        "/window/close",
+                        web::post().to(handlers::close_betting_window),
+                    )
+                    .route("/window/status", web::get().to(handlers::get_window_status))
                     // Static routes must come before dynamic routes with parameters
                     .route("/bets/count", web::get().to(handlers::get_bet_count))
                     .route("/bets", web::post().to(handlers::place_bet))
-                    .route("/bets/{index}", web::get().to(handlers::get_bet)),
+                    .route("/bets/{index}", web::get().to(handlers::get_bet))
+                    .route(
+                        "/bets/amounts/{index}",
+                        web::get().to(handlers::get_betting_amounts),
+                    )
+                    // Payout processing
+                    .route("/payouts", web::post().to(handlers::process_payouts))
+                    // Address generation and storage
+                    .route("", web::get().to(handlers::get_addresses))
+                    .route(
+                        "/generate",
+                        web::post().to(handlers::generate_and_store_addresses),
+                    )
+                    .route("/stored", web::get().to(handlers::get_stored_addresses)),
             )
             .default_service(web::route().to(not_found))
     })
