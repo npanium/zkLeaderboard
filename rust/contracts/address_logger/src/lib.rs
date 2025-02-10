@@ -4,32 +4,33 @@ extern crate alloc;
 use alloc::vec::Vec;
 use alloy_sol_types::{
     sol,
-    sol_data::{Address as SOLAddress, FixedBytes as SolFixedBytes, *},
-    SolType,
+    // sol_data::{Address as SOLAddress, FixedBytes as SolFixedBytes, *},
+    // SolType,
 };
 
 use stylus_sdk::{
-    abi::Bytes,
+    // abi::Bytes,
     alloy_primitives::{address, Address, FixedBytes, U256},
     block,
     call::{self, Call},
     contract::address,
-    crypto::keccak,
-    evm, msg,
+    // crypto::keccak,
+    evm,
+    msg,
     prelude::*,
     storage::{StorageAddress, StorageBool, StorageMap, StorageU256, StorageVec},
     ArbResult,
 };
-type ECRECOVERType = (
-    SolFixedBytes<32>,
-    Uint<8>,
-    SolFixedBytes<32>,
-    SolFixedBytes<32>,
-);
+// type ECRECOVERType = (
+//     SolFixedBytes<32>,
+//     Uint<8>,
+//     SolFixedBytes<32>,
+//     SolFixedBytes<32>,
+// );
 
 const FEE_PERCENTAGE: u64 = 10;
-const ECRECOVER: Address = address!("0000000000000000000000000000000000000001");
-const SIGNED_MESSAGE_HEAD: &'static str = "\x19Ethereum Signed Message:\n32";
+// const ECRECOVER: Address = address!("0000000000000000000000000000000000000001");
+// const SIGNED_MESSAGE_HEAD: &'static str = "\x19Ethereum Signed Message:\n32";
 
 sol_interface! {
     interface IERC20  {
@@ -66,8 +67,8 @@ sol! {
         uint256 amount,
         bool isWinner
     );
-    error EcrecoverCallError();
-    error InvalidSignatureLength();
+    // error EcrecoverCallError();
+    // error InvalidSignatureLength();
 }
 
 #[storage]
@@ -84,11 +85,11 @@ pub struct AddressLogger {
     nonces: StorageMap<Address, StorageU256>,
 }
 
-#[derive(SolidityError)]
-pub enum AddressLoggerError {
-    EcrecoverCallError(EcrecoverCallError),
-    InvalidSignatureLength(InvalidSignatureLength),
-}
+// #[derive(SolidityError)]
+// pub enum AddressLoggerError {
+//     EcrecoverCallError(EcrecoverCallError),
+//     InvalidSignatureLength(InvalidSignatureLength),
+// }
 
 #[storage]
 pub struct Bet {
@@ -173,66 +174,66 @@ impl AddressLogger {
         Ok(Vec::new())
     }
 
-    pub fn get_nonce(&self, addr: Address) -> U256 {
-        self.nonces.get(addr)
-    }
+    // pub fn get_nonce(&self, addr: Address) -> U256 {
+    //     self.nonces.get(addr)
+    // }
 
-    fn verify_signature(
-        &self,
-        bettor: Address,
-        selected_address: Address,
-        position: bool,
-        amount: U256,
-        nonce: U256,
-        deadline: U256,
-        signature: Bytes,
-    ) -> Result<(), Vec<u8>> {
-        // Check deadline
-        if U256::from(block::timestamp()) > deadline {
-            return Err(Vec::from(b"Signature expired"));
-        }
+    // fn verify_signature(
+    //     &self,
+    //     bettor: Address,
+    //     selected_address: Address,
+    //     position: bool,
+    //     amount: U256,
+    //     nonce: U256,
+    //     deadline: U256,
+    //     signature: Bytes,
+    // ) -> Result<(), Vec<u8>> {
+    //     // Check deadline
+    //     if U256::from(block::timestamp()) > deadline {
+    //         return Err(Vec::from(b"Signature expired"));
+    //     }
 
-        // Verify nonce
-        let stored_nonce = self.nonces.get(bettor);
-        if stored_nonce != nonce {
-            return Err(Vec::from(b"Invalid nonce"));
-        }
+    //     // Verify nonce
+    //     let stored_nonce = self.nonces.get(bettor);
+    //     if stored_nonce != nonce {
+    //         return Err(Vec::from(b"Invalid nonce"));
+    //     }
 
-        // Manually pack parameters into bytes (packed encoding)
-        let bettor_bytes = bettor.as_slice();
-        let selected_address_bytes = selected_address.as_slice();
-        let position_byte = if position { [1u8] } else { [0u8] };
-        let amount_bytes: [u8; 32] = amount.to_be_bytes();
-        let nonce_bytes: [u8; 32] = nonce.to_be_bytes();
-        let deadline_bytes: [u8; 32] = deadline.to_be_bytes();
+    //     // Manually pack parameters into bytes (packed encoding)
+    //     let bettor_bytes = bettor.as_slice();
+    //     let selected_address_bytes = selected_address.as_slice();
+    //     let position_byte = if position { [1u8] } else { [0u8] };
+    //     let amount_bytes: [u8; 32] = amount.to_be_bytes();
+    //     let nonce_bytes: [u8; 32] = nonce.to_be_bytes();
+    //     let deadline_bytes: [u8; 32] = deadline.to_be_bytes();
 
-        // Manually pack parameters instead of using Solidity's abi.encodePacked()
-        // to ensure byte-for-byte compatibility with our Rust backend's implementation.
-        // TODO: Library encoding might add padding or use different struct packing rules.
-        let mut message_data = Vec::new();
-        message_data.extend_from_slice(bettor_bytes);
-        message_data.extend_from_slice(selected_address_bytes);
-        message_data.extend_from_slice(&position_byte);
-        message_data.extend_from_slice(&amount_bytes);
-        message_data.extend_from_slice(&nonce_bytes);
-        message_data.extend_from_slice(&deadline_bytes);
+    //     // Manually pack parameters instead of using Solidity's abi.encodePacked()
+    //     // to ensure byte-for-byte compatibility with our Rust backend's implementation.
+    //     // TODO: Library encoding might add padding or use different struct packing rules.
+    //     let mut message_data = Vec::new();
+    //     message_data.extend_from_slice(bettor_bytes);
+    //     message_data.extend_from_slice(selected_address_bytes);
+    //     message_data.extend_from_slice(&position_byte);
+    //     message_data.extend_from_slice(&amount_bytes);
+    //     message_data.extend_from_slice(&nonce_bytes);
+    //     message_data.extend_from_slice(&deadline_bytes);
 
-        // Compute message hash and apply Ethereum Signed Message prefix
-        let message_hash = keccak(message_data);
-        let eth_signed_message_hash =
-            keccak([SIGNED_MESSAGE_HEAD.as_bytes(), &message_hash.as_slice()].concat());
+    //     // Compute message hash and apply Ethereum Signed Message prefix
+    //     let message_hash = keccak(message_data);
+    //     let eth_signed_message_hash =
+    //         keccak([SIGNED_MESSAGE_HEAD.as_bytes(), &message_hash.as_slice()].concat());
 
-        // Recover signer using the prefixed hash
-        let signer = self
-            .recover_signer(eth_signed_message_hash, signature)
-            .map_err(|_| Vec::from(b"Invalid signature"))?;
+    //     // Recover signer using the prefixed hash
+    //     let signer = self
+    //         .recover_signer(eth_signed_message_hash, signature)
+    //         .map_err(|_| Vec::from(b"Invalid signature"))?;
 
-        if signer != bettor {
-            return Err(Vec::from(b"Invalid signer"));
-        }
+    //     if signer != bettor {
+    //         return Err(Vec::from(b"Invalid signer"));
+    //     }
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     pub fn place_bet_with_signature(
         &mut self,
@@ -240,61 +241,61 @@ impl AddressLogger {
         selected_address: Address,
         position: bool,
         amount: U256,
-        nonce: U256,
-        deadline: U256,
-        signature: Bytes,
+        // nonce: U256,
+        // deadline: U256,
+        // signature: Bytes,
     ) -> ArbResult {
-        self.verify_signature(
-            bettor,
-            selected_address,
-            position,
-            amount,
-            nonce,
-            deadline,
-            signature,
-        )?;
+        // self.verify_signature(
+        //     bettor,
+        //     selected_address,
+        //     position,
+        //     amount,
+        //     nonce,
+        //     deadline,
+        //     signature,
+        // )?;
 
         // Increment nonce
-        let new_nonce = self.nonces.get(bettor) + U256::from(1);
-        self.nonces.insert(bettor, new_nonce);
+        // let new_nonce = self.nonces.get(bettor) + U256::from(1);
+        // self.nonces.insert(bettor, new_nonce);
 
         // Execute bet logic
         self.place_bet(bettor, selected_address, position, amount)
     }
 
-    pub fn recover_signer(
-        &self,
-        eth_signed_message_hash: FixedBytes<32>,
-        signature: Bytes,
-    ) -> Result<Address, AddressLoggerError> {
-        let (r, s, v) = self.split_signature(signature);
-        self.ecrecover_call(eth_signed_message_hash, v, r, s)
-    }
+    // pub fn recover_signer(
+    //     &self,
+    //     eth_signed_message_hash: FixedBytes<32>,
+    //     signature: Bytes,
+    // ) -> Result<Address, AddressLoggerError> {
+    //     let (r, s, v) = self.split_signature(signature);
+    //     self.ecrecover_call(eth_signed_message_hash, v, r, s)
+    // }
 
-    /// Invoke the ECRECOVER precompile.
-    pub fn ecrecover_call(
-        &self,
-        hash: FixedBytes<32>,
-        v: u8,
-        r: FixedBytes<32>,
-        s: FixedBytes<32>,
-    ) -> Result<Address, AddressLoggerError> {
-        let data = (hash, v, r, s);
-        let encoded_data = ECRECOVERType::abi_encode(&data);
-        match call::static_call(Call::new(), ECRECOVER, &encoded_data) {
-            Ok(result) => Ok(SOLAddress::abi_decode(&result, false).unwrap()),
-            Err(_) => Err(AddressLoggerError::EcrecoverCallError(
-                EcrecoverCallError {},
-            )),
-        }
-    }
+    // /// Invoke the ECRECOVER precompile.
+    // pub fn ecrecover_call(
+    //     &self,
+    //     hash: FixedBytes<32>,
+    //     v: u8,
+    //     r: FixedBytes<32>,
+    //     s: FixedBytes<32>,
+    // ) -> Result<Address, AddressLoggerError> {
+    //     let data = (hash, v, r, s);
+    //     let encoded_data = ECRECOVERType::abi_encode(&data);
+    //     match call::static_call(Call::new(), ECRECOVER, &encoded_data) {
+    //         Ok(result) => Ok(SOLAddress::abi_decode(&result, false).unwrap()),
+    //         Err(_) => Err(AddressLoggerError::EcrecoverCallError(
+    //             EcrecoverCallError {},
+    //         )),
+    //     }
+    // }
 
-    fn split_signature(&self, signature: Bytes) -> (FixedBytes<32>, FixedBytes<32>, u8) {
-        let r = FixedBytes::from_slice(&signature[0..32]);
-        let s = FixedBytes::from_slice(&signature[32..64]);
-        let v = signature[64];
-        (r, s, v)
-    }
+    // fn split_signature(&self, signature: Bytes) -> (FixedBytes<32>, FixedBytes<32>, u8) {
+    //     let r = FixedBytes::from_slice(&signature[0..32]);
+    //     let s = FixedBytes::from_slice(&signature[32..64]);
+    //     let v = signature[64];
+    //     (r, s, v)
+    // }
 
     pub fn place_bet(
         &mut self,
