@@ -9,7 +9,7 @@ use log::info;
 
 use services::{
     addr_logger_contract_service::AddrLoggerContractService,
-    hash_contract_service::HashContractService,
+    betting_token_service::BettingTokenService, hash_contract_service::HashContractService,
 };
 use std::env;
 
@@ -50,6 +50,14 @@ async fn main() -> std::io::Result<()> {
     .await
     .expect("Failed to initialize hash contract service");
 
+    let betting_token_service = BettingTokenService::new(
+        &env::var("RPC_URL").expect("RPC_URL not set"),
+        &env::var("PRIVATE_KEY").expect("PRIVATE_KEY not set"),
+        &env::var("TOKEN_CONTRACT_ADDRESS").expect("TOKEN_CONTRACT_ADDRESS not set"),
+    )
+    .await
+    .expect("Failed to initialize betting token service");
+
     let addr_logger_contract_service = AddrLoggerContractService::new(
         &env::var("RPC_URL").expect("RPC_URL not set"),
         &env::var("PRIVATE_KEY").expect("PRIVATE_KEY not set"),
@@ -66,6 +74,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(Data::new(pool.clone()))
             .app_data(Data::new(hash_contract_service.clone()))
             .app_data(Data::new(addr_logger_contract_service.clone()))
+            .app_data(Data::new(betting_token_service.clone()))
             .service(
                 web::scope("/api/v0/addresses")
                     .route("", web::get().to(handlers::get_addresses))
@@ -104,6 +113,16 @@ async fn main() -> std::io::Result<()> {
                         web::post().to(handlers::generate_and_store_addresses),
                     )
                     .route("/stored", web::get().to(handlers::get_stored_addresses)),
+            )
+            .service(
+                web::scope("/api/v0/token")
+                    .route("/mint", web::post().to(handlers::mint_tokens))
+                    .route("/mint-to", web::post().to(handlers::mint_to_address))
+                    .route("/burn", web::post().to(handlers::burn_tokens))
+                    .route(
+                        "/balance/{address}",
+                        web::get().to(handlers::get_token_balance),
+                    ),
             )
             .default_service(web::route().to(not_found))
     })

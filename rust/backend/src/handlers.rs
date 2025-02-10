@@ -1,10 +1,12 @@
 use std::env;
 
 use crate::models::{
-    AddressQueryParams, BetCountResponse, BetResponse, BettingAmountsResponse, InitRequest,
-    PaginationParams, PlaceBetRequest, WindowStatusResponse,
+    AddressQueryParams, BetCountResponse, BetResponse, BettingAmountsResponse, BurnTokenRequest,
+    InitRequest, MintToRequest, MintTokenRequest, PaginationParams, PlaceBetRequest,
+    TokenBalanceResponse, WindowStatusResponse,
 };
 use crate::services::addr_logger_contract_service::AddrLoggerContractService;
+use crate::services::betting_token_service::BettingTokenService;
 use crate::services::hash_contract_service::HashContractService;
 use crate::services::{address_service, hash_service};
 use actix_web::error::{ErrorBadRequest, ErrorForbidden, ErrorInternalServerError};
@@ -312,22 +314,36 @@ pub async fn start_betting_window(
     .await
     .map_err(ErrorInternalServerError)?;
 
+    // Log raw addresses from database
+    debug!("Selected addresses from database:");
+    let raw_addresses: Vec<String> = addresses.iter().map(|row| row.address.clone()).collect();
+    for (i, addr) in raw_addresses.iter().enumerate() {
+        debug!("Address {}: {}", i + 1, addr);
+    }
+
     let eth_addresses: Vec<Address> = addresses
         .into_iter()
         .filter_map(|row| row.address.parse().ok())
         .collect();
 
+    // Log converted Ethereum addresses
+    debug!("Converted Ethereum addresses:");
+    for (i, addr) in eth_addresses.iter().enumerate() {
+        debug!("ETH Address {}: {:?}", i + 1, addr);
+    }
+
     let transaction_result = contract_service
-        .start_betting_window(eth_addresses)
+        .start_betting_window(eth_addresses.clone())
         .await
         .map_err(ErrorInternalServerError)?;
 
     Ok(HttpResponse::Ok().json(json!({
         "count": count,
+        "addresses": raw_addresses,
+        "eth_addresses": eth_addresses.iter().map(|addr| format!("{:?}", addr)).collect::<Vec<String>>(),
         "transaction_result": hex::encode(transaction_result)
     })))
 }
-
 pub async fn close_betting_window(
     contract_service: web::Data<AddrLoggerContractService>,
 ) -> Result<HttpResponse, actix_web::Error> {
@@ -533,4 +549,95 @@ pub async fn get_bet_count(
     Ok(HttpResponse::Ok().json(BetCountResponse {
         count: count.to_string(),
     }))
+}
+
+// Tokens
+
+pub async fn mint_tokens(
+    contract_service: web::Data<BettingTokenService>,
+    request: web::Json<MintTokenRequest>,
+) -> Result<HttpResponse, actix_web::Error> {
+    debug!(
+        "mint_tokens: Processing mint request for {} tokens",
+        request.amount
+    );
+
+    let transaction_result = contract_service.mint(request.amount).await.map_err(|e| {
+        error!("mint_tokens: Transaction failed: {}", e);
+        ErrorInternalServerError("Failed to mint tokens")
+    })?;
+
+    Ok(HttpResponse::Ok().json(json!({
+        "transaction_result": hex::encode(transaction_result)
+    })))
+}
+
+pub async fn mint_to_address(
+    contract_service: web::Data<BettingTokenService>,
+    request: web::Json<MintToRequest>,
+) -> Result<HttpResponse, actix_web::Error> {
+    debug!(
+        "mint_to_address: Processing mint request for {} tokens",
+        request.amount
+    );
+
+    let to = request.address.parse::<Address>().map_err(|e| {
+        error!("mint_to_address: Invalid address format: {}", e);
+        ErrorBadRequest("Invalid address format")
+    })?;
+
+    let transaction_result = contract_service
+        .mint_to(to, request.amount)
+        .await
+        .map_err(|e| {
+            error!("mint_to_address: Transaction failed: {}", e);
+            ErrorInternalServerError("Failed to mint tokens")
+        })?;
+
+    Ok(HttpResponse::Ok().json(json!({
+        "transaction_result": hex::encode(transaction_result)
+    })))
+}
+
+pub async fn burn_tokens(
+    contract_service: web::Data<BettingTokenService>,
+    request: web::Json<BurnTokenRequest>,
+) -> Result<HttpResponse, actix_web::Error> {
+    debug!(
+        "burn_tokens: Processing burn request for {} tokens",
+        request.amount
+    );
+
+    let transaction_result = contract_service.burn(request.amount).await.map_err(|e| {
+        error!("burn_tokens: Transaction failed: {}", e);
+        ErrorInternalServerError("Failed to burn tokens")
+    })?;
+
+    Ok(HttpResponse::Ok().json(json!({
+        "transaction_result": hex::encode(transaction_result)
+    })))
+}
+
+pub async fn get_token_balance(
+    contract_service: web::Data<BettingTokenService>,
+    address: web::Path<String>,
+) -> Result<HttpResponse, actix_web::Error> {
+    debug!(
+        "get_token_balance: Retrieving balance for address {}",
+        address
+    );
+
+    let account = address.parse::<Address>().map_err(|e| {
+        error!("get_token_balance: Invalid address format: {}", e);
+        ErrorBadRequest("Invalid address format")
+    })?;
+
+    debug!("Account {}", account);
+    let balance = contract_service.balance_of(account).await.map_err(|e| {
+        error!("get_token_balance: Failed to get balance: {}", e);
+        ErrorInternalServerError("Failed to get token balance")
+    })?;
+    debug!("Balance {}", balance);
+
+    Ok(HttpResponse::Ok().json(TokenBalanceResponse { balance: balance }))
 }

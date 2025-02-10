@@ -72,3 +72,26 @@ pub struct ContractAddressesResponse {
     pub treasury: String,
     pub token: String,
 }
+
+// Token
+
+#[derive(Debug, Deserialize)]
+pub struct MintTokenRequest {
+    pub amount: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MintToRequest {
+    pub address: String,
+    pub amount: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BurnTokenRequest {
+    pub amount: u64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TokenBalanceResponse {
+    pub balance: u64,
+}
