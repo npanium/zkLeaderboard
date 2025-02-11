@@ -8,6 +8,8 @@ import { ProgressStepper } from "../components/ProgressStepper";
 import { GameLeaderboard } from "../components/GameLeaderboard";
 import { InstructionPanel } from "../components/InstructionPanel";
 import { useGameActions } from "../hooks/useGameActions";
+import ArcadeMachine from "@/components/ArcadeMachine";
+import { chakra } from "@/lib/fonts";
 
 export default function Dashboard() {
   const [activeStep, setActiveStep] = useState(0);
@@ -40,20 +42,26 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen p-8">
       <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">zkLeaderboard</h1>
-          <div className="space-x-4">
-            <Button
-              onClick={handleStepAction}
-              disabled={loading || activeStep >= STEPS.length}
-            >
-              {loading ? "Processing..." : STEPS[activeStep]?.buttonText}
-            </Button>
-          </div>
+        <div className="flex justify-between items-center mb-16">
+          <h1
+            className={`text-3xl font-bold m-auto underline underline-offset-4 ${chakra.className}`}
+          >
+            zkLeaderboard Demo
+          </h1>
+          <div className="space-x-4"></div>
         </div>
 
+        <ArcadeMachine />
+        <div className="text-center my-10">
+          <Button
+            onClick={handleStepAction}
+            disabled={loading || activeStep >= STEPS.length}
+          >
+            {loading ? "Processing..." : STEPS[activeStep]?.buttonText}
+          </Button>
+          <InstructionPanel activeStep={activeStep} />
+        </div>
         <ProgressStepper steps={STEPS} activeStep={activeStep} />
-
         {gameData.length > 0 && (
           <Card className="mb-8">
             <CardHeader>
@@ -75,8 +83,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         )}
-
-        <InstructionPanel activeStep={activeStep} />
       </div>
     </div>
   );

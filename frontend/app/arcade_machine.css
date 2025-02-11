@@ -1,0 +1,424 @@
+.arcade-machine {
+  height: 400px;
+  width: 400px;
+  position: relative;
+  margin: 35px auto;
+  perspective: 35em;
+  box-sizing: initial !important;
+}
+
+.arcade-machine *,
+.arcade-machine::before *,
+.arcade-machine::after *,
+.shadow::before,
+.shadow::after {
+  box-sizing: initial !important;
+}
+
+.arcade-machine .top {
+  height: 15%;
+  width: 70%;
+  position: absolute;
+  top: 0%;
+  left: 15%;
+  background: #7d12ff;
+  border: 4px solid #ff00aa;
+  z-index: 3;
+}
+.arcade-machine .top:before,
+.arcade-machine .top:after {
+  height: 100%;
+  width: 4%;
+  position: absolute;
+  top: -9%;
+  background: #7d12ff;
+  border: 4px solid #ff00aa;
+  content: " ";
+  box-sizing: initial !important;
+}
+.arcade-machine .top:before {
+  left: -6%;
+}
+.arcade-machine .top:after {
+  right: -6%;
+}
+.arcade-machine .stripes {
+  height: 100%;
+  width: 10%;
+  position: absolute;
+  top: 0%;
+  left: 45%;
+  background: #057dff;
+}
+.arcade-machine .stripes:before,
+.arcade-machine .stripes:after {
+  height: 100%;
+  width: 100%;
+  position: absolute;
+  top: 0%;
+  content: " ";
+  box-sizing: initial !important;
+}
+.arcade-machine .stripes:before {
+  background: #f52789;
+  left: -100%;
+  box-sizing: initial !important;
+}
+.arcade-machine .stripes:after {
+  background: #00ddff;
+  right: -100%;
+  box-sizing: initial !important;
+}
+.arcade-machine > .shadow {
+  height: 85%;
+  width: 65%;
+  position: absolute;
+  top: 2%;
+  left: 19%;
+  background: #200589;
+  box-shadow: 0 0 60px 5px #ff3b94, 0 0 60px 50px #200589;
+  z-index: -1;
+}
+.arcade-machine .screen-container {
+  height: 50%;
+  width: 62%;
+  position: absolute;
+  top: 15%;
+  left: 19%;
+  background: #200589;
+  border: 4px solid #ff00aa;
+  z-index: 1;
+  box-sizing: initial !important;
+}
+.arcade-machine .screen-container:before,
+.arcade-machine .screen-container:after {
+  height: 100%;
+  width: 4%;
+  position: absolute;
+  top: -2%;
+  background: #7d12ff;
+  content: " ";
+  border: 4px solid #ff00aa;
+  z-index: 2;
+  box-sizing: initial !important;
+}
+.arcade-machine .screen-container:before {
+  left: -6%;
+}
+.arcade-machine .screen-container:after {
+  right: -6%;
+}
+.arcade-machine .screen-container .shadow {
+  height: 8%;
+  width: 110%;
+  position: absolute;
+  top: 0%;
+  left: -5%;
+  background: rgba(0, 0, 0, 0.1);
+  z-index: 4;
+}
+.arcade-machine .screen-container .screen {
+  height: 70%;
+  width: 75%;
+  position: absolute;
+  top: 15%;
+  left: 11%;
+  background: #313332;
+  border: 4px solid #ff00aa;
+  border-radius: 90px 93px 93px 93px/15px 15px 15px 15px;
+  overflow: hidden;
+  text-align: center;
+}
+.arcade-machine .screen-container .screen-display {
+  position: absolute;
+  width: 100%;
+  height: 200%;
+  background-image: repeating-linear-gradient(
+    0deg,
+    #313332,
+    #313332 15px,
+    #4a4d4c 15px,
+    #4a4d4c 16px
+  );
+  animation: translate 1s infinite;
+}
+.arcade-machine .screen-container .screen h2 {
+  margin: auto;
+  width: 100%;
+  position: absolute;
+  top: 60%;
+  color: #e0e0e0;
+}
+.arcade-machine .screen-container .joystick {
+  height: 6%;
+  width: 5%;
+  background: #55ffe1;
+  position: absolute;
+  top: 91%;
+  left: 17%;
+  border-radius: 50%;
+  border: 4px solid #ff00aa;
+  z-index: 3;
+  box-sizing: initial !important;
+}
+.arcade-machine .screen-container .joystick::before {
+  height: 90%;
+  width: 65%;
+  position: absolute;
+  top: 7%;
+  left: 32%;
+  background: #31ffdb;
+  content: "";
+  border-radius: 50%;
+  box-sizing: initial !important;
+}
+.arcade-machine .screen-container .joystick .stick {
+  height: 200%;
+  width: 40%;
+  position: absolute;
+  top: 100%;
+  left: 30%;
+  background: #ff00aa;
+  content: "";
+  box-sizing: initial !important;
+}
+.arcade-machine .screen-container .joystick .stick::before {
+  height: 100%;
+  width: 150%;
+  transform: rotate(90deg);
+  position: absolute;
+  top: 50%;
+  left: -20%;
+  background: #ff00aa;
+  content: "";
+  box-sizing: initial !important;
+}
+.arcade-machine .board {
+  height: 20%;
+  width: 66%;
+  position: absolute;
+  top: 61%;
+  left: 18.2%;
+  background: #200589;
+  transform: rotateX(70deg);
+  box-sizing: initial !important;
+}
+.arcade-machine .board::before,
+.arcade-machine .board::after {
+  height: 92%;
+  width: 4%;
+  position: absolute;
+  top: -2%;
+  background: #7d12ff;
+  content: " ";
+  border: 4px solid #ff00aa;
+  z-index: 2;
+  box-sizing: initial !important;
+}
+.arcade-machine .board::before {
+  left: -6%;
+}
+.arcade-machine .board::after {
+  right: -6%;
+}
+.arcade-machine .board .button {
+  height: 15%;
+  width: 6%;
+  position: absolute;
+  top: 40%;
+  left: 30%;
+  border-radius: 50%;
+  border: 4px solid #ff00aa;
+}
+.arcade-machine .board .button-a {
+  background: #f52789;
+  left: 40%;
+  box-sizing: initial !important;
+}
+.arcade-machine .board .button-b {
+  background: #057dff;
+  left: 55%;
+  box-sizing: initial !important;
+}
+.arcade-machine .board .button-c {
+  background: #00ddff;
+  left: 70%;
+  box-sizing: initial !important;
+}
+.arcade-machine .bottom {
+  height: 10%;
+  width: 71%;
+  position: absolute;
+  top: 76%;
+  left: 14.5%;
+  background: #7d12ff;
+  border: 4px solid #ff00aa;
+  box-sizing: initial !important;
+}
+.arcade-machine .bottom::before,
+.arcade-machine .bottom::after {
+  height: 98%;
+  width: 4%;
+  position: absolute;
+  top: -9%;
+  background: #7d12ff;
+  content: " ";
+  border: 4px solid #ff00aa;
+  z-index: 2;
+  box-sizing: initial !important;
+}
+.arcade-machine .bottom::before {
+  left: -5.8%;
+}
+.arcade-machine .bottom::after {
+  right: -5.9%;
+}
+
+.alien-container {
+  position: absolute;
+  top: 20%;
+  left: 35%;
+  height: 30%;
+  width: 30%;
+  animation: bounce 0.8s infinite;
+  box-sizing: initial !important;
+}
+
+.alien .ear {
+  position: absolute;
+  top: 14%;
+  height: 13%;
+  width: 10%;
+  background: #55ffe1;
+  box-sizing: initial !important;
+}
+.alien .ear-left {
+  left: 35%;
+  box-sizing: initial !important;
+}
+.alien .ear-right {
+  right: 35%;
+  box-sizing: initial !important;
+}
+.alien .ear::before {
+  position: absolute;
+  top: -100%;
+  height: 100%;
+  width: 100%;
+  background: #55ffe1;
+  content: "";
+  box-sizing: initial !important;
+}
+.alien .ear-left::before {
+  left: -100%;
+  box-sizing: initial !important;
+}
+.alien .ear-right::before {
+  right: -100%;
+  box-sizing: initial !important;
+}
+.alien .head-top {
+  position: absolute;
+  top: 26%;
+  left: 20%;
+  height: 15%;
+  width: 60%;
+  background: #55ffe1;
+  box-sizing: initial !important;
+}
+.alien .head {
+  position: absolute;
+  top: 40%;
+  left: 11.5%;
+  height: 15%;
+  width: 77%;
+  background: #55ffe1;
+  box-sizing: initial !important;
+}
+.alien .head .eye {
+  position: absolute;
+  top: -5%;
+  height: 77%;
+  width: 12%;
+  background: #313332;
+  box-sizing: initial !important;
+}
+.alien .head .eye-left {
+  left: 25%;
+}
+.alien .head .eye-right {
+  right: 25%;
+}
+.alien .body {
+  position: absolute;
+  top: 54%;
+  left: 10%;
+  height: 20%;
+  width: 80%;
+  background: #55ffe1;
+}
+.alien .body::before,
+.alien .body::after {
+  height: 220%;
+  width: 13%;
+  background: #55ffe1;
+  position: absolute;
+  content: "";
+  box-sizing: initial !important;
+}
+.alien .body::before {
+  left: -10%;
+}
+.alien .body::after {
+  right: -10%;
+}
+.alien .arm {
+  position: absolute;
+  top: 85%;
+  height: 13%;
+  width: 10%;
+  background: #55ffe1;
+}
+.alien .arm-left {
+  left: 35%;
+}
+.alien .arm-right {
+  right: 35%;
+}
+.alien .arm::before {
+  position: absolute;
+  top: -100%;
+  height: 100%;
+  width: 100%;
+  background: #55ffe1;
+  content: "";
+  box-sizing: initial !important;
+}
+.alien .arm-left::before {
+  left: -100%;
+  box-sizing: initial !important;
+}
+.alien .arm-right::before {
+  right: -100%;
+  box-sizing: initial !important;
+}
+
+@keyframes bounce {
+  from {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes translate {
+  from {
+    top: 0;
+  }
+  to {
+    top: 10%;
+  }
+}

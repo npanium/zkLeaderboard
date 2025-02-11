@@ -23,12 +23,8 @@ export function InstructionPanel({ activeStep }: InstructionPanelProps) {
   };
 
   return (
-    <Card className="sticky bottom-4">
-      <CardContent className="p-4">
-        <div className="text-sm text-muted-foreground">
-          {getInstructionText(activeStep)}
-        </div>
-      </CardContent>
-    </Card>
+    <div className="p-5 text-sm text-muted-foreground">
+      {getInstructionText(activeStep)}
+    </div>
   );
 }

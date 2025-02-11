@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { GameData } from "../lib/types";
 
-const ADDRESSES = "http://localhost:3001/api/v0/addresses";
+const GET_ADDRESSES = "http://localhost:3001/api/v0/addresses";
 
 export function useGameActions() {
   const [loading, setLoading] = useState(false);
@@ -12,7 +12,7 @@ export function useGameActions() {
   const simulateGame = async () => {
     setLoading(true);
     try {
-      const response = await fetch(ADDRESSES);
+      const response = await fetch(GET_ADDRESSES);
       const data = await response.json();
       setGameData(data);
       return true;
