@@ -18,6 +18,26 @@ For development mode with logs:
 RUST_LOG="[executor]=info" RISC0_DEV_MODE=1 cargo run
 ```
 
+## Setup Database
+
+1. Set the database URL:
+
+```bash
+export DATABASE_URL="sqlite:<database path>"
+```
+
+2. If `.sqlx` folder is missing, regenerate SQLx data:
+
+```bash
+cargo sqlx prepare
+```
+
+This will regenerate necessary SQLx files for compile-time query checking.
+
+Note: `.sqlx` folder contains data for compile-time verification of SQL queries. It must be recreated if deleted or when queries change.
+
+````
+
 ## Components
 
 ### Guest Program
@@ -45,7 +65,7 @@ CREATE TABLE addresses (
     score INTEGER,
     created_at DATETIME
 )
-```
+````
 
 ## Technologies
 
