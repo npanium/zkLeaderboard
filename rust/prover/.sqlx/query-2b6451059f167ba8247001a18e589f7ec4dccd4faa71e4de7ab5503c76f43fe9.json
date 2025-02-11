@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT score FROM addresses WHERE address = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "score",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "2b6451059f167ba8247001a18e589f7ec4dccd4faa71e4de7ab5503c76f43fe9"
+}
