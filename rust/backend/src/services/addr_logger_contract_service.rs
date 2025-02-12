@@ -12,11 +12,9 @@ use std::sync::Arc;
 abigen!(
     AddrLogger,
     r#"[
-
-    function init(address operator, address treasury, address token) external returns (uint8[] memory)
+    function init(address operator, address authorized_contract, address treasury, address token) external returns (uint8[] memory)
     function startBettingWindow(address[] memory addresses) external returns (uint8[] memory)
     function closeBettingWindow() external returns (uint8[] memory)
-    function placeBetWithSignature(address bettor, address selected_address, bool position, uint256 amount) external returns (uint8[] memory)
     function placeBet(address bettor, address selected_address, bool position, uint256 amount) external returns (uint8[] memory)
     function getWindowActive() external view returns (bool)
     function getBet(uint256 index) external view returns (address, address, bool, uint256)
@@ -61,12 +59,13 @@ impl AddrLoggerContractService {
     pub async fn init(
         &self,
         operator: Address,
+        authorized_contract: Address,
         treasury: Address,
         token: Address,
     ) -> Result<String> {
         let tx = self
             .contract
-            .init(operator, treasury, token)
+            .init(operator, authorized_contract, treasury, token)
             .send()
             .await?
             .await?

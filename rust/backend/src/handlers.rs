@@ -261,6 +261,14 @@ pub async fn init_contract(
         ErrorBadRequest("Invalid operator address")
     })?;
 
+    let authorized_contract = init_request
+        .authorized_contract
+        .parse::<Address>()
+        .map_err(|e| {
+            error!("init_contract: Invalid operator address: {}", e);
+            ErrorBadRequest("Invalid operator address")
+        })?;
+
     let treasury = init_request.treasury.parse::<Address>().map_err(|e| {
         error!("init_contract: Invalid treasury address: {}", e);
         ErrorBadRequest("Invalid treasury address")
@@ -278,7 +286,7 @@ pub async fn init_contract(
         })?;
 
     let transaction_hash = contract_service
-        .init(operator, treasury, token)
+        .init(operator, authorized_contract, treasury, token)
         .await
         .map_err(|e| {
             error!("init_contract: Transaction failed: {}", e);

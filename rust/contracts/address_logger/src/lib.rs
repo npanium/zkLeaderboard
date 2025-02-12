@@ -10,15 +10,15 @@ use alloy_sol_types::{
 
 use stylus_sdk::{
     // abi::Bytes,
-    alloy_primitives::{address, Address, FixedBytes, U256},
+    alloy_primitives::{Address, U256},
     block,
-    call::{self, Call},
+    call::Call,
     contract::address,
     // crypto::keccak,
     evm,
     msg,
     prelude::*,
-    storage::{StorageAddress, StorageBool, StorageMap, StorageU256, StorageVec},
+    storage::{StorageAddress, StorageBool, StorageU256, StorageVec},
     ArbResult,
 };
 // type ECRECOVERType = (
@@ -77,12 +77,13 @@ pub struct AddressLogger {
     window_active: StorageBool,
     valid_addresses: StorageVec<StorageAddress>,
     bets: StorageVec<Bet>,
-    operator: StorageAddress,                    // Added to restrict control
-    treasury: StorageAddress,                    // Address to collect fees
-    address_up_amounts: StorageVec<StorageU256>, // Total UP amounts per address (after fees)
+    operator: StorageAddress, // Added to restrict control
+    authorized_contract: StorageAddress,
+    treasury: StorageAddress,                      // Address to collect fees
+    address_up_amounts: StorageVec<StorageU256>,   // Total UP amounts per address (after fees)
     address_down_amounts: StorageVec<StorageU256>, // Total DOWN amounts per address (after fees)
     token_address: StorageAddress,
-    nonces: StorageMap<Address, StorageU256>,
+    // nonces: StorageMap<Address, StorageU256>,
 }
 
 // #[derive(SolidityError)]
@@ -101,7 +102,13 @@ pub struct Bet {
 
 #[public]
 impl AddressLogger {
-    pub fn init(&mut self, operator: Address, treasury: Address, token: Address) -> ArbResult {
+    pub fn init(
+        &mut self,
+        operator: Address,
+        authorized_contract: Address,
+        treasury: Address,
+        token: Address,
+    ) -> ArbResult {
         // Check if already initialized
         if self.operator.get() != Address::ZERO {
             return Err(Vec::from(b"Already initialized"));
@@ -109,6 +116,7 @@ impl AddressLogger {
 
         // Set initial values
         self.operator.set(operator);
+        self.authorized_contract.set(authorized_contract);
         self.treasury.set(treasury);
         self.token_address.set(token);
         self.window_active.set(false);
@@ -235,33 +243,33 @@ impl AddressLogger {
     //     Ok(())
     // }
 
-    pub fn place_bet_with_signature(
-        &mut self,
-        bettor: Address,
-        selected_address: Address,
-        position: bool,
-        amount: U256,
-        // nonce: U256,
-        // deadline: U256,
-        // signature: Bytes,
-    ) -> ArbResult {
-        // self.verify_signature(
-        //     bettor,
-        //     selected_address,
-        //     position,
-        //     amount,
-        //     nonce,
-        //     deadline,
-        //     signature,
-        // )?;
+    // pub fn place_bet_with_signature(
+    //     &mut self,
+    //     bettor: Address,
+    //     selected_address: Address,
+    //     position: bool,
+    //     amount: U256,
+    // nonce: U256,
+    // deadline: U256,
+    // signature: Bytes,
+    // ) -> ArbResult {
+    // self.verify_signature(
+    //     bettor,
+    //     selected_address,
+    //     position,
+    //     amount,
+    //     nonce,
+    //     deadline,
+    //     signature,
+    // )?;
 
-        // Increment nonce
-        // let new_nonce = self.nonces.get(bettor) + U256::from(1);
-        // self.nonces.insert(bettor, new_nonce);
+    // Increment nonce
+    // let new_nonce = self.nonces.get(bettor) + U256::from(1);
+    // self.nonces.insert(bettor, new_nonce);
 
-        // Execute bet logic
-        self.place_bet(bettor, selected_address, position, amount)
-    }
+    // Execute bet logic
+    //     self.place_bet(bettor, selected_address, position, amount)
+    // }
 
     // pub fn recover_signer(
     //     &self,
@@ -408,8 +416,9 @@ impl AddressLogger {
     }
 
     pub fn process_payouts(&mut self, winners: Vec<bool>) -> Result<(), Vec<u8>> {
-        // Only operator can process payouts
-        if msg::sender() != self.operator.get() {
+        // Only operator/authorized addr can process payouts
+        let sender = msg::sender();
+        if sender != self.operator.get() && sender != self.authorized_contract.get() {
             return Err(Vec::from(b"Not authorized"));
         }
 

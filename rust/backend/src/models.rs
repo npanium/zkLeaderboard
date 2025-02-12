@@ -31,8 +31,9 @@ pub struct PaginationParams {
 #[derive(Debug, Deserialize)]
 pub struct InitRequest {
     pub operator: String,
+    pub authorized_contract: String,
     pub treasury: String,
-    pub token: String,
+    // pub token: String,
 }
 
 #[derive(Deserialize)]
