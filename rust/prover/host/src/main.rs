@@ -71,7 +71,7 @@ mod handlers {
                 results: None,
             },
         );
-
+        print!("Addresses:{:?}", req.addresses);
         state
             .tx
             .send((job_id.clone(), req.addresses.clone()))

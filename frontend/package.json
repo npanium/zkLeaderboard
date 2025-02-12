@@ -13,6 +13,7 @@
     "@radix-ui/react-slot": "^1.1.2",
     "@rainbow-me/rainbowkit": "^2.2.3",
     "@tanstack/react-query": "^5.66.0",
+    "axios": "^1.7.9",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.475.0",
@@ -22,7 +23,8 @@
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",
     "viem": "^2.23.1",
-    "wagmi": "^2.14.11"
+    "wagmi": "^2.14.11",
+    "zkverifyjs": "^0.6.0"
   },
   "devDependencies": {
     "@types/node": "^20",
