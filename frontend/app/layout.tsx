@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import "./globals.css";
-import "./arcade_machine.css";
+import "./styles/globals.css";
 import { poppins } from "@/lib/fonts";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "zkLeaderboard",
@@ -15,7 +15,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`dark ${poppins.className}`}>{children}</body>
+      <body className={`dark ${poppins.className}`}>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

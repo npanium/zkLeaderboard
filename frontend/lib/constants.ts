@@ -5,13 +5,13 @@ export const STEPS: Step[] = [
     id: 1,
     name: "Game Simulation",
     status: "not-started",
-    buttonText: "Initialize Game",
+    buttonText: "Simulate Gameplay",
   },
   {
     id: 2,
     name: "Betting Window",
     status: "not-started",
-    buttonText: "Start Betting",
+    buttonText: "Start Betting Period",
   },
   {
     id: 3,

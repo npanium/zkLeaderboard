@@ -46,7 +46,7 @@ impl HashContractService {
         hash: [u8; 32],
         timestamp: i64,
         record_count: usize,
-    ) -> Result<Vec<u8>> {
+    ) -> Result<String> {
         let hash_bytes = H256::from(hash);
         let timestamp = U256::from(timestamp as u64);
         let record_count = U256::from(record_count);
@@ -59,11 +59,6 @@ impl HashContractService {
             .await?
             .ok_or_else(|| anyhow::anyhow!("Transaction failed"))?;
 
-        Ok(tx
-            .logs
-            .into_iter()
-            .next()
-            .map(|log| log.data.to_vec())
-            .unwrap_or_default())
+        Ok(format!("{:#x}", tx.transaction_hash))
     }
 }

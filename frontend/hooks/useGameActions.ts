@@ -1,7 +1,140 @@
 import { useState } from "react";
 import { GameData } from "../lib/types";
 
-const GET_ADDRESSES = "http://localhost:3001/api/v0/addresses";
+const BACKEND_PORT = 3001;
+const WALLETADDRESS = "0x67f1452b3099CfB27E708130421c98aD2319C0b7";
+const ARBISCAN_TXN = "https://sepolia.arbiscan.io/tx/";
+
+const GET_ADDRESSES = `http://localhost:${BACKEND_PORT}/api/v0/addresses`;
+/*
+Response:
+[
+    {
+        "id": null,
+        "address": "0x1234",
+        "score": 189
+    },
+]
+*/
+const GET_HASH_STORE = `http://localhost:${BACKEND_PORT}/api/v0/addresses/hash/store`;
+/*
+ Response:
+{
+  "hash": "0xabcd...1234",
+  "timestamp": 1676184000,
+  "record_count": 1000,
+  "transaction_hash": "0xabcd...1234"
+}
+ */
+
+// const POST_INIT_ADDR_CONTRACT = `http://localhost:${BACKEND_PORT}/api/v0/addresses/init`; // Already initiated!
+/*
+Request:
+{
+  "operator": "0x1234...5678",
+  "treasury": "0x9876...4321"
+}
+Response:
+{
+  "transaction_hash": "0xabcd...1234"
+}
+*/
+const POST_WINDOW_START = `http://localhost:${BACKEND_PORT}/api/v0/addresses/window/start`;
+/*
+Response:
+{
+  "count": 5,
+  "addresses": [
+    "0x1234...5678",
+    "0x2345...6789",
+    "0x3456...7890",
+    "0x4567...8901",
+    "0x5678...9012"
+  ],
+  "eth_addresses": [
+    "0x1234...5678",
+    "0x2345...6789",
+    "0x3456...7890",
+    "0x4567...8901",
+    "0x5678...9012"
+  ],
+  "transaction_hash": "0xabcd...1234"
+}
+*/
+const GET_WINDOW_STATUS = `http://localhost:${BACKEND_PORT}/api/v0/addresses/window/status`;
+/*
+Response:
+{
+    "active": false
+}
+*/
+const POST_WINDOW_CLOSE = `http://localhost:${BACKEND_PORT}/api/v0/addresses/window/close`;
+/*
+Response:
+{
+ "transaction_hash": "0x012345"
+ }
+*/
+const POST_MINT_TOKENS = `http://localhost:${BACKEND_PORT}/api/v0/token/mint-to`;
+/*   
+POST: 
+{
+    "address": "0x1234",
+    "amount": 100
+}
+Response:
+{
+    "transaction_result": "12345"
+}
+*/
+const GET_TOKEN_BALANCE = `http://localhost:${BACKEND_PORT}/api/v0/token/balance/${WALLETADDRESS}`;
+/*
+Response:
+{
+    "balance": 100
+}
+*/
+const POST_PLACE_BET = `http://localhost:${BACKEND_PORT}/api/v0/addresses/bets`;
+/*
+Request:
+{
+  "bettor": "0x1234...5678",
+  "selected_address": "0x9876...4321",
+  "position": true,
+  "amount": "1000000000000000000"
+}
+Response:
+{
+  "transaction_hash": "0xabcd...1234"
+}
+*/
+const POST_PROCESS_PAY = `http://localhost:${BACKEND_PORT}/api/v0/addresses/payouts`;
+/*
+Request:
+[true, false, true, false, true]
+Response:
+{
+  "status": "success",
+  "message": "Payouts processed successfully",
+  "transaction_hash": "0xabcd...1234"
+}
+*/
+
+const GET_BET_COUNT = `http://localhost:${BACKEND_PORT}/api/v0/addresses/bets/count`;
+/*
+Response:
+{
+  "count": "42"
+}
+*/
+const GET_BETTING_AMTS = `http://localhost:${BACKEND_PORT}/api/v0/addresses/amounts/{index}`;
+/*
+Response:
+{
+  "up_amount": "2000000000000000000",
+  "down_amount": "1000000000000000000"
+}
+*/
 
 export function useGameActions() {
   const [loading, setLoading] = useState(false);

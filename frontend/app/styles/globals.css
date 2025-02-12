@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+@import "./arcadeMachine.css";
+@import "./customWalletStyles.css";
+
 html {
   font-family: var(--font-inter);
 }

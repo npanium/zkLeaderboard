@@ -220,7 +220,7 @@ pub async fn hash_and_store_all_addresses(
     let mut hash_array = [0u8; 32];
     hash_array.copy_from_slice(&hash_bytes);
 
-    let result = match contract_service
+    let transaction_hash = match contract_service
         .store_hash(hash_array, hash_result.timestamp, hash_result.record_count)
         .await
     {
@@ -245,7 +245,7 @@ pub async fn hash_and_store_all_addresses(
         "hash": hash_result.hash,
         "timestamp": hash_result.timestamp,
         "record_count": hash_result.record_count,
-        "transaction_result": hex::encode(result)
+        "transaction_hash":transaction_hash
     })))
 }
 
@@ -277,7 +277,7 @@ pub async fn init_contract(
             ErrorInternalServerError("Invalid token address configuration")
         })?;
 
-    let transaction_result = contract_service
+    let transaction_hash = contract_service
         .init(operator, treasury, token)
         .await
         .map_err(|e| {
@@ -286,7 +286,7 @@ pub async fn init_contract(
         })?;
 
     Ok(HttpResponse::Ok().json(json!({
-        "transaction_result": hex::encode(transaction_result)
+        "transaction_hash": transaction_hash
     })))
 }
 
@@ -332,7 +332,7 @@ pub async fn start_betting_window(
         debug!("ETH Address {}: {:?}", i + 1, addr);
     }
 
-    let transaction_result = contract_service
+    let transaction_hash = contract_service
         .start_betting_window(eth_addresses.clone())
         .await
         .map_err(ErrorInternalServerError)?;
@@ -341,7 +341,7 @@ pub async fn start_betting_window(
         "count": count,
         "addresses": raw_addresses,
         "eth_addresses": eth_addresses.iter().map(|addr| format!("{:?}", addr)).collect::<Vec<String>>(),
-        "transaction_result": hex::encode(transaction_result)
+        "transaction_hash": transaction_hash
     })))
 }
 pub async fn close_betting_window(
@@ -357,13 +357,13 @@ pub async fn close_betting_window(
         return Err(ErrorForbidden("No active betting window found"));
     }
 
-    let transaction_result = contract_service.close_betting_window().await.map_err(|e| {
+    let transaction_hash = contract_service.close_betting_window().await.map_err(|e| {
         error!("close_betting_window: Transaction failed: {}", e);
         ErrorInternalServerError("Failed to close betting window")
     })?;
 
     Ok(HttpResponse::Ok().json(json!({
-        "transaction_result": hex::encode(transaction_result)
+        "transaction_hash": transaction_hash
     })))
 }
 
@@ -387,6 +387,11 @@ pub async fn place_bet(
     })? {
         return Err(ErrorForbidden("No active betting window"));
     }
+
+    let bettor = bet_request.bettor.parse::<Address>().map_err(|e| {
+        error!("place_bet: Invalid bettor address format: {}", e);
+        ErrorBadRequest("Invalid bettor address format")
+    })?;
 
     let selected_address = bet_request
         .selected_address
@@ -415,8 +420,8 @@ pub async fn place_bet(
         ErrorBadRequest("Invalid amount format")
     })?;
 
-    let transaction_result = contract_service
-        .place_bet(selected_address, bet_request.position, amount)
+    let transaction_hash = contract_service
+        .place_bet(bettor, selected_address, bet_request.position, amount)
         .await
         .map_err(|e| {
             error!("place_bet: Transaction failed: {}", e);
@@ -424,7 +429,7 @@ pub async fn place_bet(
         })?;
 
     Ok(HttpResponse::Ok().json(json!({
-        "transaction_result": hex::encode(transaction_result)
+        "transaction_hash": transaction_hash
     })))
 }
 
@@ -492,7 +497,7 @@ pub async fn process_payouts(
         ));
     }
 
-    contract_service
+    let transaction_hash = contract_service
         .process_payouts(winners.into_inner())
         .await
         .map_err(|e| {
@@ -501,8 +506,9 @@ pub async fn process_payouts(
         })?;
 
     Ok(HttpResponse::Ok().json(json!({
-        "status": "success",
-        "message": "Payouts processed successfully"
+       "status": "success",
+       "message": "Payouts processed successfully",
+       "transaction_hash": transaction_hash
     })))
 }
 

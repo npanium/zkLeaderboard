@@ -37,6 +37,7 @@ pub struct InitRequest {
 
 #[derive(Deserialize)]
 pub struct PlaceBetRequest {
+    pub bettor: String,
     pub selected_address: String,
     pub position: bool,
     pub amount: String, // ETH amount in string format for precision

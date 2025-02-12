@@ -1,30 +1,83 @@
 import { Card, CardContent } from "@/components/ui/card";
+import { useEffect, useState } from "react";
 
 interface InstructionPanelProps {
   activeStep: number;
 }
 
+const STEP_DETAILS = {
+  0: {
+    steps: [""],
+    instruction: "Click the button above to start generating game data",
+  },
+  1: {
+    steps: [
+      "› Generating addresses and score list...",
+      "› Creating database...",
+      "› Fetching addresses...",
+    ],
+    instruction: "Start the betting window by clicking the button above",
+  },
+  2: {
+    steps: [
+      "› Collecting bet data...",
+      "› Initializing proof generation...",
+      "› Computing ZK proofs...",
+      "› Verifying proof integrity...",
+    ],
+    instruction: "Generating zero-knowledge proofs to verify your bets ",
+  },
+  3: {
+    steps: [
+      "› Processing all bets...",
+      "› Calculating final positions...",
+      "› Computing rewards...",
+      "› Finalizing results...",
+    ],
+    instruction: "Finalizing results and calculating rewards",
+  },
+};
+
 export function InstructionPanel({ activeStep }: InstructionPanelProps) {
-  const getInstructionText = (step: number) => {
-    switch (step) {
-      case 0:
-        return "Click 'Initialize Game' to start a new game session";
-      case 1:
-        return "Game data generated! Click 'Start Betting' to select random addresses";
-      case 2:
-        return "Place bets on selected addresses";
-      case 3:
-        return "ZK proofs generated! Click 'Resolve Bets' to determine winners";
-      case 4:
-        return "Bets resolved! Winners can claim their rewards";
-      default:
-        return "";
+  const [visibleSubSteps, setVisibleSubSteps] = useState<number>(0);
+  const currentStepDetails =
+    STEP_DETAILS[activeStep as keyof typeof STEP_DETAILS] || [];
+
+  useEffect(() => {
+    setVisibleSubSteps(0);
+    if (currentStepDetails.steps.length) {
+      const interval = setInterval(() => {
+        setVisibleSubSteps((prev) => {
+          if (prev < currentStepDetails.steps.length) return prev + 1;
+          clearInterval(interval);
+          return prev;
+        });
+      }, 800);
+      return () => clearInterval(interval);
     }
-  };
+    return () => setVisibleSubSteps(0);
+  }, [activeStep, currentStepDetails.steps.length]);
 
   return (
-    <div className="p-5 text-sm text-muted-foreground">
-      {getInstructionText(activeStep)}
-    </div>
+    <Card className="bg-black">
+      <CardContent className="p-4 font-mono">
+        {currentStepDetails.steps
+          .slice(0, visibleSubSteps)
+          .map((step, index) => (
+            <div key={index} className="text-green-400">
+              {step}
+              {activeStep !== 0 && "✓"}
+            </div>
+          ))}
+        {visibleSubSteps < currentStepDetails.steps.length && (
+          <div className="text-green-400 animate-pulse">
+            {currentStepDetails.steps[visibleSubSteps]} ⏳
+          </div>
+        )}
+        <div className="text-blue-400 mt-4">
+          {currentStepDetails.instruction}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
