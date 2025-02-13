@@ -1,4 +1,4 @@
-// app/api/verify/route.ts
+// ROUTE CREATED FOR TESTING ONLY
 
 import { NextResponse } from "next/server";
 import { ethers } from "ethers";

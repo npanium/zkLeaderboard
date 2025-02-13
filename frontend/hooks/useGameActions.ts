@@ -108,7 +108,7 @@ Response:
   "transaction_hash": "0xabcd...1234"
 }
 */
-const POST_PROCESS_PAY = `http://localhost:${BACKEND_PORT}/api/v0/addresses/payouts`;
+// const POST_PROCESS_PAY = `http://localhost:${BACKEND_PORT}/api/v0/addresses/payouts`; // Solidity SC will handle this
 /*
 Request:
 [true, false, true, false, true]
@@ -133,6 +133,30 @@ Response:
 {
   "up_amount": "2000000000000000000",
   "down_amount": "1000000000000000000"
+}
+*/
+const POST_VERIFY_AND_PAY = `http://localhost:3000/api/verify`;
+/*
+Request:
+{
+    "addresses":["0x1234...", "0x4567..."]
+}
+Response:
+{
+    "status": "success",
+    "zkVerifyAttestation": {
+        "attestationId": 42979,
+        "proofDetails": {
+            "root": "0x0b8861fd1226c0d08468e4053ae521253e8ac43a96cadbda47ab237f9d62870c",
+            "proof": [
+                "0x9748d439df3f8a81c26cc6d1e6a20e29010e22771b7d1bd7cd9d0c567bbdf805",
+                "0xaf46de19988962222e0831bd1b9ee91c18817fbf463130233890af69ad1b899d"
+            ],
+            "numberOfLeaves": 4,
+            "leafIndex": 1,
+            "leaf": "0x6b34dab3f2bd512935146cc33f65d6f7f4015d4b1358b6940bf1765f60886f44"
+        }
+    }
 }
 */
 

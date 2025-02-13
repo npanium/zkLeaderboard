@@ -11,3 +11,16 @@ export interface Step {
   status: string;
   buttonText: string;
 }
+
+export interface ZKVerifyAttestation {
+  attestationId: number;
+  proofDetails: ProofDetails;
+}
+
+export interface ProofDetails {
+  root: string;
+  proof: string[];
+  numberOfLeaves: number;
+  leafIndex: number;
+  leaf: string;
+}

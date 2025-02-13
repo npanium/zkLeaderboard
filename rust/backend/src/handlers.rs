@@ -267,7 +267,7 @@ pub async fn init_contract(
         .map_err(|e| {
             error!("init_contract: Invalid operator address: {}", e);
             ErrorBadRequest("Invalid operator address")
-        })?;
+        })?; // Verification contract address
 
     let treasury = init_request.treasury.parse::<Address>().map_err(|e| {
         error!("init_contract: Invalid treasury address: {}", e);

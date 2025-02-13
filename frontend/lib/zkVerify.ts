@@ -1,11 +1,12 @@
 import { ZkVerifyEvents, zkVerifySession } from "zkverifyjs";
 import { ZKVERIFY_SEED_PHRASE } from "./config";
+import { ZKVerifyAttestation } from "./types";
 
 export async function verifyProofWithZkVerify(
   proof: string,
   imageId: string,
   pubInputs: string
-) {
+): Promise<ZKVerifyAttestation> {
   const session = await zkVerifySession
     .start()
     .Testnet()
