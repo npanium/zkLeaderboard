@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { GameData } from "../lib/types";
+import { useAccount } from "wagmi";
 
 const BACKEND_PORT = 3001;
-const WALLETADDRESS = "0x67f1452b3099CfB27E708130421c98aD2319C0b7";
+// const WALLETADDRESS = "0x67f1452b3099CfB27E708130421c98aD2319C0b7";
 const ARBISCAN_TXN = "https://sepolia.arbiscan.io/tx/";
+const API_BASE = `http://localhost:${BACKEND_PORT}/api/v0`;
 
 const GET_ADDRESSES = `http://localhost:${BACKEND_PORT}/api/v0/addresses`;
 /*
@@ -11,9 +13,15 @@ Response:
 [
     {
         "id": null,
+        "address": "0x1234", // Only show this to the FE
+        "score": 189
+    },
+      {
+        "id": null,
         "address": "0x1234",
         "score": 189
     },
+    ...
 ]
 */
 const GET_HASH_STORE = `http://localhost:${BACKEND_PORT}/api/v0/addresses/hash/store`;
@@ -87,7 +95,7 @@ Response:
     "transaction_result": "12345"
 }
 */
-const GET_TOKEN_BALANCE = `http://localhost:${BACKEND_PORT}/api/v0/token/balance/${WALLETADDRESS}`;
+// const GET_TOKEN_BALANCE = `http://localhost:${BACKEND_PORT}/api/v0/token/balance/${WALLETADDRESS}`;
 /*
 Response:
 {
@@ -144,6 +152,7 @@ Request:
 Response:
 {
     "status": "success",
+    "journal": "0x123456",
     "zkVerifyAttestation": {
         "attestationId": 42979,
         "proofDetails": {
@@ -157,59 +166,229 @@ Response:
             "leaf": "0x6b34dab3f2bd512935146cc33f65d6f7f4015d4b1358b6940bf1765f60886f44"
         }
     }
+    "transaction_hash": "0x1234"
 }
 */
+
+/**
+ * Actions:
+ * - Get Addresses
+ * - Get Hash (and store on chain as a "proof")
+ * - Start Betting Window
+ * - Show Window status
+ * - Mint tokens for betting
+ * - Get token balance
+ * - Place bet on the address shown from when the betting window was opened
+ * - Close betting window
+ * - Verify and process payouts
+ *
+ */
 
 export function useGameActions() {
   const [loading, setLoading] = useState(false);
   const [gameData, setGameData] = useState<GameData[]>([]);
   const [selectedAddresses, setSelectedAddresses] = useState<string[]>([]);
   const [bets, setBets] = useState<Record<string, "top" | "bottom">>({});
+  const [windowActive, setWindowActive] = useState(false);
+  const [tokenBalance, setTokenBalance] = useState<string>("0");
+  const [error, setError] = useState<string | null>(null);
 
-  const simulateGame = async () => {
+  const account = useAccount();
+  // Helper function for API calls
+  const apiCall = async (endpoint: string, options: RequestInit = {}) => {
+    try {
+      const response = await fetch(`${API_BASE}${endpoint}`, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          ...options?.headers,
+        },
+      });
+      if (!response.ok) throw new Error(`API error: ${response.statusText}`);
+      return await response.json();
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  // Get all addresses
+  const getAddresses = async () => {
     setLoading(true);
     try {
-      const response = await fetch(GET_ADDRESSES);
-      const data = await response.json();
+      const data = await apiCall("/addresses");
       setGameData(data);
-      return true;
-    } catch (error) {
-      console.error("Error simulating game:", error);
-      return false;
+      return data;
     } finally {
       setLoading(false);
     }
   };
 
-  const startBetting = () => {
-    const randomAddresses = gameData
-      .sort(() => 0.5 - Math.random())
-      .slice(0, 5)
-      .map((item) => item.address);
-    setSelectedAddresses(randomAddresses);
-    return true;
-  };
-
-  const generateProofs = async () => {
+  // Get and store hash on chain
+  const getAndStoreHash = async () => {
     setLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      return true;
-    } catch (error) {
-      console.error("Error generating proofs:", error);
-      return false;
+      const data = await apiCall("/addresses/hash/store");
+      return data;
     } finally {
       setLoading(false);
     }
   };
 
-  const resolveBets = () => {
-    // Implement bet resolution logic
-    return true;
+  // Start betting window
+  const startBettingWindow = async () => {
+    setLoading(true);
+    try {
+      const data = await apiCall("/addresses/window/start", {
+        method: "POST",
+      });
+      setSelectedAddresses(data.addresses);
+      setWindowActive(true);
+      return data;
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const placeBet = (address: string, direction: "top" | "bottom") => {
-    setBets((prev: any) => ({ ...prev, [address]: direction }));
+  // Get window status
+  const getWindowStatus = async () => {
+    try {
+      const data = await apiCall("/addresses/window/status");
+      setWindowActive(data.active);
+      return data.active;
+    } catch (error) {
+      console.error("Error checking window status:", error);
+      return false;
+    }
+  };
+
+  // Mint tokens for betting
+  const mintTokens = async (amount: number) => {
+    setLoading(true);
+    try {
+      const data = await apiCall("/token/mint-to", {
+        method: "POST",
+        body: JSON.stringify({
+          address: account.address,
+          amount,
+        }),
+      });
+      await getTokenBalance(); // Refresh balance after minting
+      return data;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get token balance
+  const getTokenBalance = async () => {
+    try {
+      const data = await apiCall(`/token/balance/${account.address}`);
+      setTokenBalance(data.balance);
+      return data.balance;
+    } catch (error) {
+      console.error("Error getting token balance:", error);
+      return "0";
+    }
+  };
+
+  // Place bet
+  const placeBet = async (
+    selectedAddress: string,
+    position: boolean,
+    amount: string
+  ) => {
+    setLoading(true);
+    try {
+      const data = await apiCall("/addresses/bets", {
+        method: "POST",
+        body: JSON.stringify({
+          bettor: account.address,
+          selected_address: selectedAddress,
+          position,
+          amount,
+        }),
+      });
+      setBets((prev) => ({
+        ...prev,
+        [selectedAddress]: position ? "top" : "bottom",
+      }));
+      return data;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Close betting window
+  const closeBettingWindow = async () => {
+    setLoading(true);
+    try {
+      const data = await apiCall("/addresses/window/close", {
+        method: "POST",
+      });
+      setWindowActive(false);
+      return data;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Verify and process payouts using Next.js API route
+  const verifyAndProcessPayouts = async () => {
+    setLoading(true);
+    try {
+      // Using Next.js API route instead of backend route
+      const response = await fetch("/api/verify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          addresses: selectedAddresses,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Verification failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      // Log successful verification and attestation details
+      console.log("Verification successful:", {
+        attestationId: data.zkVerifyAttestation?.attestationId,
+        transactionHash: data.transaction_hash,
+      });
+
+      return data;
+    } catch (error) {
+      console.error("Error in verification process:", error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get betting amounts for an address
+  const getBettingAmounts = async (index: number) => {
+    try {
+      const data = await apiCall(`/addresses/amounts/${index}`);
+      return data;
+    } catch (error) {
+      console.error("Error getting betting amounts:", error);
+      return { up_amount: "0", down_amount: "0" };
+    }
+  };
+
+  // Get total bet count
+  const getBetCount = async () => {
+    try {
+      const data = await apiCall("/addresses/bets/count");
+      return data.count;
+    } catch (error) {
+      console.error("Error getting bet count:", error);
+      return "0";
+    }
   };
 
   return {
@@ -217,12 +396,21 @@ export function useGameActions() {
     gameData,
     selectedAddresses,
     bets,
+    windowActive,
+    tokenBalance,
+    error,
     actions: {
-      simulateGame,
-      startBetting,
-      generateProofs,
-      resolveBets,
+      getAddresses,
+      getAndStoreHash,
+      startBettingWindow,
+      getWindowStatus,
+      mintTokens,
+      getTokenBalance,
       placeBet,
+      closeBettingWindow,
+      verifyAndProcessPayouts,
+      getBettingAmounts,
+      getBetCount,
     },
   };
 }

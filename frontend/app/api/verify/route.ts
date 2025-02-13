@@ -11,23 +11,8 @@ export async function POST(request: NextRequest) {
     // Submit to Risc0 service
     const jobId = await submitAddressesForProof(addresses);
     console.log("jobId: ", jobId);
-    // Poll for proof completion
-    let proofResponse;
-    let journal = "";
-    let results;
 
-    let attempts = 0;
-    while (attempts < 30) {
-      // 30 attempts with 2s delay = 1min max wait
-      proofResponse = await getProofStatus(jobId);
-      if (proofResponse.status === "completed") {
-        journal = proofResponse.journal;
-        results = proofResponse.results;
-        break;
-      }
-      await new Promise((r) => setTimeout(r, 2000));
-      attempts++;
-    }
+    const proofResponse = await pollForProofCompletion(jobId);
 
     if (!proofResponse || proofResponse.status !== "completed") {
       return NextResponse.json(
@@ -73,13 +58,25 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       status: "success",
-      zkVerifyAttestation: zkVerifyResult,
-      contractTransaction: tx.hash,
       journal: proofResponse.journal,
-      results: proofResponse.results,
+      zkVerifyAttestation: zkVerifyResult,
+      transaction_hash: tx.hash,
     });
   } catch (error) {
     console.error("Verification error:", error);
     return NextResponse.json({ error: "Verification failed" }, { status: 500 });
   }
+}
+
+async function pollForProofCompletion(jobId: string) {
+  let attempts = 0;
+  while (attempts < 30) {
+    const proofResponse = await getProofStatus(jobId);
+    if (proofResponse.status === "completed") {
+      return proofResponse;
+    }
+    await new Promise((r) => setTimeout(r, 2000));
+    attempts++;
+  }
+  return null;
 }
