@@ -1,22 +1,26 @@
 # Address Generator Backend
 
-A Rust-based backend service that generates Ethereum-style addresses with random scores, stores them in SQLite, and provides secure hashing functionality for on-chain verification via Stylus smart contracts.
+A Rust-based backend service that generates Ethereum-style addresses with random scores, stores them in SQLite, and provides secure hashing functionality for on-chain verification via Stylus smart contracts. Includes betting and token management features.
 
 ## Features
 
-- Generate random Ethereum-style addresses
-- Assign random scores (100-1000)
-- SQLite storage
-- RESTful API endpoints
-- Pagination support for retrieving addresses
-- Secure Keccak-256 hashing of address data
-- Smart contract integrations with Stylus for both hashing and address logging
+- Generate random Ethereum-style addresses with scores
+- SQLite database storage
+- RESTful API endpoints with CORS support
+- Smart contract integrations with Arbitrum Stylus for:
+  - Hash storage and verification
+  - Address logging
+  - Betting functionality
+  - Token management
+- Complete betting window management
+- Token minting and burning operations
+- Comprehensive error handling and logging
 
 ## Prerequisites
 
 - Rust (latest stable version)
 - SQLite
-- Cargo SQLx CLI (optional - only needed if setting up database from scratch)
+- Cargo SQLx CLI (optional - for database setup)
 - Ethereum wallet with private key for contract interactions
 - Access to Arbitrum Stylus RPC endpoint
 
@@ -36,13 +40,14 @@ RPC_URL="https://stylus-testnet.arbitrum.io/rpc"
 PRIVATE_KEY="your-private-key-here"
 HASH_CONTRACT_ADDRESS="your-hash-contract-address-here"
 ADDR_LOGGER_CONTRACT_ADDRESS="your-address-logger-contract-address-here"
+TOKEN_CONTRACT_ADDRESS="your-token-contract-address-here"
 ```
 
 ### Database Setup
 
 The SQLite database is included in the repository at `data/addresses.db`.
 
-If you need to set up the database from scratch (only if database doesn't exist):
+For fresh database setup:
 
 ```bash
 mkdir -p data
@@ -64,100 +69,237 @@ Production mode:
 cargo run --release
 ```
 
-The server will start at `http://localhost:3001`
+Server starts at `http://localhost:3001`
 
 ## API Endpoints
 
-All endpoints are prefixed with `/api/v0/addresses`
+All endpoints are prefixed with `/api/v0`
 
-### Generate Addresses (In-Memory)
-
-```
-GET /api/v0/addresses?count=500
-```
-
-Generates addresses without storing them.
-
-- `count` (optional): Number of addresses to generate (default: 1000)
-
-### Generate and Store Addresses
+### Addresses
 
 ```
-POST /api/v0/addresses/generate?count=500
+GET /addresses
 ```
 
-Generates addresses and stores them in the database.
-
-- `count` (optional): Number of addresses to generate (default: 1000)
-
-### Retrieve Stored Addresses
+Retrieves all stored addresses.
 
 ```
-GET /api/v0/addresses/stored?page=1&per_page=100
+GET /addresses/stored?page=1&per_page=100
 ```
 
 Retrieves stored addresses with pagination.
 
-- `page` (optional): Page number (default: 1)
-- `per_page` (optional): Items per page (default: 100)
-
-### Get Hash of Stored Addresses (Paginated)
+### Hashing
 
 ```
-GET /api/v0/addresses/hash?page=1&per_page=100
+GET /addresses/hash?page=1&per_page=100
 ```
 
-Generates a deterministic hash of the specified page of addresses.
-
-### Get Hash of All Addresses
+Generates hash for paginated addresses.
 
 ```
-GET /api/v0/addresses/hash/all
+GET /addresses/hash/all
 ```
 
-Generates a deterministic hash of all stored addresses.
-
-### Store Hash On-Chain
+Generates hash of all addresses.
 
 ```
-POST /api/v0/addresses/hash/store
+POST /addresses/hash/store
 ```
 
-Generates a hash of all addresses and stores it in the hash storage contract.
+Stores hash of all addresses on-chain.
 
-Returns:
+### Betting Window Management
+
+```
+POST /addresses/init
+```
+
+Initializes contract with operator, treasury and token addresses.
 
 ```json
 {
-  "hash": "0x...",
-  "timestamp": 1234567890,
-  "record_count": 1000,
-  "transaction_result": "0x..."
+  "operator": "0x...",
+  "authorized_contract": "0x...",
+  "treasury": "0x..."
 }
 ```
 
-### Log Random Addresses On-Chain
-
 ```
-POST /api/v0/addresses/random-log?count=5
+POST /addresses/window/start?count=3
 ```
 
-Selects random addresses from the database and logs them to the address logger contract.
+Starts betting window with random addresses.
 
-- `count` (optional): Number of random addresses to log (default: 5)
+- `count` (optional): Number of addresses (default: 3)
 
-Returns:
+```
+POST /addresses/window/close
+```
+
+Closes current betting window.
+
+```
+GET /addresses/window/status
+```
+
+Returns current betting window status.
+
+### Betting Operations
+
+```
+POST /addresses/bets
+```
+
+Places a new bet.
 
 ```json
 {
-  "count": 5,
-  "transaction_hash": "0x..."
+  "bettor": "0x...",
+  "selected_address": "0x...",
+  "position": true,
+  "amount": "0.1"
 }
+```
+
+```
+GET /addresses/bets/count
+```
+
+Returns total number of bets placed.
+
+```
+GET /addresses/bets/{index}
+```
+
+Returns details of specific bet.
+
+```
+GET /addresses/bets/amounts/{index}
+```
+
+Returns up/down betting amounts for address index.
+
+### Token Operations
+
+```
+POST /token/mint
+```
+
+Mints new tokens.
+
+```json
+{
+  "amount": "1000"
+}
+```
+
+```
+POST /token/mint-to
+```
+
+Mints tokens to specific address.
+
+```json
+{
+  "address": "0x...",
+  "amount": "1000"
+}
+```
+
+```
+POST /token/burn
+```
+
+Burns tokens.
+
+```json
+{
+  "amount": "1000"
+}
+```
+
+```
+GET /token/balance/{address}
+```
+
+Returns token balance for address.
+
+## Error Handling
+
+The API uses standard HTTP status codes:
+
+- 200: Success
+- 400: Bad Request (invalid input)
+- 403: Forbidden (e.g., betting window already active)
+- 404: Not Found
+- 500: Internal Server Error
+
+All error responses include a JSON body with an error message.
+
+## Project Structure
+
+```
+backend/
+├── src/
+│   ├── main.rs              # Application entry point and server setup
+│   ├── models.rs            # Data models and types
+│   ├── handlers.rs          # API endpoint handlers
+│   ├── db.rs               # Database setup and operations
+│   └── services/
+│       ├── mod.rs          # Service module declarations
+│       ├── address_service.rs       # Address generation
+│       ├── hash_service.rs         # Hashing functionality
+│       ├── hash_contract_service.rs # Hash storage contract
+│       ├── addr_logger_contract_service.rs # Address logging contract
+│       └── betting_token_service.rs # Token management
+├── data/
+│   └── addresses.db        # SQLite database
+└── Cargo.toml             # Project dependencies
+```
+
+## Security Features
+
+- CORS support (configurable)
+- Environment variable configuration
+- Type-safe database operations
+- Input validation for all endpoints
+- Secure contract interactions
+- Comprehensive error handling and logging
+- Default route handler for undefined paths
+
+## Environment Variables
+
+Required environment variables:
+
+- `DATABASE_URL`: SQLite database URL
+- `RPC_URL`: Arbitrum Stylus RPC endpoint
+- `PRIVATE_KEY`: Private key for contract interactions
+- `HASH_CONTRACT_ADDRESS`: Address of hash storage contract
+- `ADDR_LOGGER_CONTRACT_ADDRESS`: Address of address logger contract
+- `TOKEN_CONTRACT_ADDRESS`: Address of betting token contract
+
+## Development
+
+Run tests:
+
+```bash
+cargo test
+```
+
+Check code formatting:
+
+```bash
+cargo fmt -- --check
+```
+
+Run linter:
+
+```bash
+cargo clippy
 ```
 
 ## Database Schema
-
-The addresses are stored in an SQLite database with the following schema:
 
 ```sql
 CREATE TABLE addresses (
@@ -166,65 +308,4 @@ CREATE TABLE addresses (
     score INTEGER NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
-```
-
-## Project Structure
-
-```
-backend/
-├── src/
-│   ├── main.rs              # Application entry point
-│   ├── models.rs            # Data models
-│   ├── handlers.rs          # Request handlers
-│   ├── db.rs               # Database setup
-│   └── services/
-│       ├── mod.rs          # Service module declarations
-│       ├── address_service.rs       # Address generation logic
-│       ├── hash_service.rs         # Hashing functionality
-│       ├── hash_contract_service.rs # Hash storage contract interactions
-│       └── addr_logger_contract_service.rs # Address logging contract interactions
-├── data/                   # Database directory
-│   └── addresses.db        # SQLite database (included)
-└── Cargo.toml             # Project dependencies
-```
-
-## Error Handling
-
-The API uses standard HTTP status codes:
-
-- 200: Success
-- 400: Bad Request
-- 404: Not Found
-- 500: Internal Server Error
-
-All error responses include a JSON body with an error message.
-
-## Security Features
-
-- Deterministic address sorting before hashing
-- Keccak-256 hashing (Ethereum standard)
-- Secure contract interactions with two separate contracts
-- Environment variable configuration
-- Type-safe database operations
-- Comprehensive error handling and logging
-- Not found handler for undefined routes
-
-## Development
-
-To run tests:
-
-```bash
-cargo test
-```
-
-To check code formatting:
-
-```bash
-cargo fmt -- --check
-```
-
-To run linter:
-
-```bash
-cargo clippy
 ```

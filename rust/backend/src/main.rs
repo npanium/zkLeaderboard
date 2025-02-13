@@ -77,7 +77,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(Data::new(betting_token_service.clone()))
             .service(
                 web::scope("/api/v0/addresses")
-                    .route("", web::get().to(handlers::get_addresses))
+                    .route("", web::get().to(handlers::get_all_addresses))
                     .route("/hash", web::get().to(handlers::hash_stored_addresses))
                     .route("/hash/all", web::get().to(handlers::hash_all_addresses))
                     .route(
@@ -104,8 +104,8 @@ async fn main() -> std::io::Result<()> {
                         "/bets/amounts/{index}",
                         web::get().to(handlers::get_betting_amounts),
                     )
-                    // Payout processing
-                    .route("/payouts", web::post().to(handlers::process_payouts))
+                    // Payout processing being done by Solidity contract
+                    // .route("/payouts", web::post().to(handlers::process_payouts))
                     // Address generation and storage
                     .route("", web::get().to(handlers::get_addresses))
                     .route(

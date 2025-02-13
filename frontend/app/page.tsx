@@ -174,7 +174,7 @@ export default function Dashboard() {
 
               {/* Display token balance if available */}
               {tokenBalance && (
-                <div className="mt-4">Token Balance: {tokenBalance}</div>
+                <div className="mt-4">Token Balance: {tokenBalance} $BET</div>
               )}
 
               <InstructionPanel

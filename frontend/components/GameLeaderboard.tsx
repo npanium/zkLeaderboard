@@ -47,42 +47,56 @@ export function GameLeaderboard({
     }
   };
 
+  const displayData =
+    activeStep >= 2
+      ? gameData.filter((item) => selectedAddresses.includes(item.address))
+      : gameData;
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <Input
-          type="number"
-          value={betAmount}
-          onChange={(e: any) => setBetAmount(e.target.value)}
-          placeholder="Bet amount in ETH"
-          className="w-40"
-          min="0"
-          step="0.1"
-        />
-        <span className="text-sm text-muted-foreground">ETH</span>
-      </div>
+      {activeStep >= 2 && (
+        <div className="flex items-center gap-4">
+          <Input
+            type="number"
+            value={betAmount}
+            onChange={(e: any) => setBetAmount(e.target.value)}
+            placeholder="Bet amount in $BET"
+            className="w-40"
+            min="0"
+            step="0.1"
+          />
+          <span className="text-sm text-muted-foreground">$BET</span>
+        </div>
+      )}
 
       <div className="max-h-96 overflow-y-auto">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Address</TableHead>
-              {activeStep >= 2 && <TableHead>Place Bet</TableHead>}
+              {activeStep >= 2 && (
+                <>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
+                </>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {gameData.map((item) => (
-              <TableRow
-                key={item.address}
-                className={
-                  selectedAddresses.includes(item.address) ? "bg-blue-50" : ""
-                }
-              >
+            {displayData.map((item) => (
+              <TableRow key={item.address}>
                 <TableCell>{item.address}</TableCell>
-
                 {activeStep >= 2 && (
-                  <TableCell>
-                    {selectedAddresses.includes(item.address) ? (
+                  <>
+                    <TableCell>
+                      {bets[item.address]
+                        ? `Bet placed: ${
+                            bets[item.address] === "top"
+                              ? "Top 50%"
+                              : "Bottom 50%"
+                          }`
+                        : "No bet placed"}
+                    </TableCell>
+                    <TableCell>
                       <div className="flex gap-2">
                         <Button
                           size="sm"
@@ -90,7 +104,7 @@ export function GameLeaderboard({
                             bets[item.address] === "top" ? "default" : "outline"
                           }
                           onClick={() => handlePlaceBet(item.address, true)}
-                          disabled={placingBet === item.address}
+                          disabled={!!placingBet || !!bets[item.address]} // Fixed boolean conversion
                         >
                           {placingBet === item.address
                             ? "Placing Bet..."
@@ -104,17 +118,15 @@ export function GameLeaderboard({
                               : "outline"
                           }
                           onClick={() => handlePlaceBet(item.address, false)}
-                          disabled={placingBet === item.address}
+                          disabled={!!placingBet || !!bets[item.address]} // Fixed boolean conversion
                         >
                           {placingBet === item.address
                             ? "Placing Bet..."
                             : "Bottom 50%"}
                         </Button>
                       </div>
-                    ) : (
-                      "-"
-                    )}
-                  </TableCell>
+                    </TableCell>
+                  </>
                 )}
               </TableRow>
             ))}

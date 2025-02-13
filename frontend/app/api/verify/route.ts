@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     console.log("Success. Calling Verification Prize contract");
 
     // Call smart contract
-    const provider = new ethers.JsonRpcProvider(process.env.ARBITRUM_RPC_URL);
+    const provider = new ethers.JsonRpcProvider(process.env.ARBITRUM_RPC_URL!);
     const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
     const contract = new Contract(
       process.env.VERIFICATION_PRIZE_CONTRACT_ADDRESS!,
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     const index = zkVerifyResult.proofDetails.leafIndex;
     const winners = proofResponse.results.map((result) => result.is_top_half);
 
-    const tx = await contract.VerifyWinnersAndProcess(
+    const tx = await contract.verifyWinnersAndProcess(
       leaf,
       attestationId,
       merklePath,
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
 
 async function pollForProofCompletion(jobId: string) {
   let attempts = 0;
-  while (attempts < 30) {
+  while (attempts < 1000) {
     const proofResponse = await getProofStatus(jobId);
     if (proofResponse.status === "completed") {
       return proofResponse;

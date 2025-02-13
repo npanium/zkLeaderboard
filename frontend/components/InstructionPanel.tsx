@@ -22,25 +22,27 @@ const STEP_DETAILS = {
       "› Creating database...",
       "› Fetching addresses...",
     ],
-    instruction: "Start the betting window by clicking the button above",
+    instruction:
+      "Store the address data hash on-chain to ensure game integrity",
   },
   2: {
     steps: [
-      "› Collecting bet data...",
-      "› Initializing proof generation...",
-      "› Computing ZK proofs...",
-      "› Verifying proof integrity...",
+      "› Computing data hash...",
+      "› Storing hash on blockchain...",
+      "› Verifying hash storage...",
     ],
-    instruction: "Generating zero-knowledge proofs to verify your bets ",
+    instruction:
+      "Start the betting window to allow players to place their bets",
   },
   3: {
     steps: [
-      "› Processing all bets...",
-      "› Calculating final positions...",
-      "› Computing rewards...",
-      "› Finalizing results...",
+      "› Opening betting window...",
+      "› Selecting random addresses...",
+      "› Initializing betting contract...",
+      "› Activating betting period...",
     ],
-    instruction: "Finalizing results and calculating rewards",
+    instruction:
+      "Close the betting window and process results with zero-knowledge verification",
   },
 };
 
@@ -65,7 +67,7 @@ export function InstructionPanel({
       return () => clearInterval(interval);
     }
     return () => setVisibleSubSteps(0);
-  }, [activeStep, currentStepDetails.steps.length]);
+  }, [activeStep, currentStepDetails.steps.length, apiResponse]);
 
   return (
     <Card className="bg-black">

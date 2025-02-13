@@ -228,7 +228,9 @@ export function useGameActions() {
   const getAndStoreHash = async () => {
     setLoading(true);
     try {
-      const data = await apiCall("/addresses/hash/store");
+      const data = await apiCall("/addresses/hash/store", {
+        method: "POST",
+      });
       return data;
     } finally {
       setLoading(false);
@@ -242,6 +244,7 @@ export function useGameActions() {
       const data = await apiCall("/addresses/window/start", {
         method: "POST",
       });
+      console.log("[startBettingWindow gameAction]: ", data);
       setSelectedAddresses(data.addresses);
       setWindowActive(true);
       return data;

@@ -81,6 +81,7 @@ impl AddrLoggerContractService {
     }
 
     pub async fn start_betting_window(&self, addresses: Vec<Address>) -> Result<String> {
+        print!("Addresses: {:?}", addresses);
         let tx = self
             .contract
             .start_betting_window(addresses)

@@ -32,7 +32,27 @@ pub async fn get_addresses(query: web::Query<AddressQueryParams>) -> Result<Http
 
     Ok(HttpResponse::Ok().json(addresses))
 }
+pub async fn get_all_addresses(
+    pool: web::Data<SqlitePool>,
+) -> Result<HttpResponse, actix_web::Error> {
+    debug!("get_all_addresses: Retrieving all addresses");
 
+    let addresses = match address_service::get_all_addresses(&pool).await {
+        Ok(addrs) => {
+            debug!(
+                "get_all_addresses: Successfully retrieved {} addresses",
+                addrs.len()
+            );
+            addrs
+        }
+        Err(e) => {
+            error!("get_all_addresses: Failed to retrieve addresses: {}", e);
+            return Err(ErrorInternalServerError(e));
+        }
+    };
+
+    Ok(HttpResponse::Ok().json(addresses))
+}
 pub async fn generate_and_store_addresses(
     pool: web::Data<SqlitePool>,
     query: web::Query<AddressQueryParams>,
@@ -267,7 +287,7 @@ pub async fn init_contract(
         .map_err(|e| {
             error!("init_contract: Invalid operator address: {}", e);
             ErrorBadRequest("Invalid operator address")
-        })?; // Verification contract address
+        })?; // Verification Prize contract address
 
     let treasury = init_request.treasury.parse::<Address>().map_err(|e| {
         error!("init_contract: Invalid treasury address: {}", e);
@@ -303,7 +323,7 @@ pub async fn start_betting_window(
     contract_service: web::Data<AddrLoggerContractService>,
     query: web::Query<AddressQueryParams>,
 ) -> Result<HttpResponse, actix_web::Error> {
-    let count = query.count.unwrap_or(5);
+    let count = query.count.unwrap_or(3);
     debug!("start_betting_window: Starting with count={}", count);
 
     // Check if a window is already active

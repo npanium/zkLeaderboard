@@ -1,81 +1,113 @@
 # AddressLogger Stylus Contract
 
-Arbitrum Stylus smart contract for logging addresses and managing a betting system based on address performance.
+Arbitrum Stylus smart contract for managing a betting system with ERC20 token integration.
 
 ## Overview
 
-The contract provides two main functionalities:
+The contract manages a betting system where:
 
-1. Address Logging
-
-- Emits AddressLog events with operator, addresses, timestamp and batch size
-- Stores addresses on-chain
-
-2. Betting System
-
-- Users can place bets on specific addresses' future performance
-- Position betting (true/false) for performance predictions
-- Payable function for ETH-based betting
+1. An operator controls betting windows
+2. Users can place ERC20 token-based bets on addresses
+3. Includes fee collection and treasury management
+4. Supports position betting (up/down) on addresses
+5. Automated payout processing based on winners
 
 ## Contract Events
 
 ```solidity
-// Address logging event
-event AddressLog(
+event WindowStarted(
     address indexed operator,
-    address[] addresses,
-    uint256 timestamp,
-    uint256 batch_size
+    address[] validAddresses,
+    uint256 timestamp
 );
 
-// Betting event
+event WindowClosed(
+    address indexed operator,
+    uint256 timestamp
+);
+
 event BetPlaced(
     address indexed bettor,
     address indexed selectedAddress,
     bool position,
     uint256 amount
 );
+
+event PayoutProcessed(
+    address indexed bettor,
+    uint256 amount,
+    bool isWinner
+);
 ```
+
+## Key Features
+
+- ERC20 token-based betting system
+- Operator-controlled betting windows
+- 10% fee on all bets sent to treasury
+- Up/Down position betting
+- Automatic payout calculation and distribution
+- Comprehensive betting amount tracking
+- Multi-address betting support
 
 ## Contract Functions
 
-```solidity
-// Log batch of addresses
-function log_addresses(address[] memory addresses) external;
+### Admin Functions
 
-// Place bet on address performance
-function place_bet(address selected_address, bool position) external payable;
+```solidity
+// Initialize contract
+function init(address operator, address authorizedContract, address treasury, address token) external;
+
+// Start betting window
+function start_betting_window(address[] memory addresses) external;
+
+// Close betting window
+function close_betting_window() external;
+
+// Process payouts
+function process_payouts(bool[] memory winners) external;
+```
+
+### Betting Functions
+
+```solidity
+// Place bet with tokens
+function place_bet(address bettor, address selectedAddress, bool position, uint256 amount) external;
 
 // View functions
 function get_bet(uint256 index) external view returns (address, address, bool, uint256);
 function get_bet_count() external view returns (uint256);
+function get_window_active() external view returns (bool);
+function get_up_amount(uint256 addrIndex) external view returns (uint256);
+function get_down_amount(uint256 addrIndex) external view returns (uint256);
+```
+
+### Helper Functions
+
+```solidity
+function is_valid_address(address addr) external view returns (bool);
+function get_operator() external view returns (address);
+function get_treasury() external view returns (address);
+function get_token() external view returns (address);
 ```
 
 ## Prerequisites
 
-- Rust installed (latest stable version)
+- Rust (latest stable version)
 - Cargo Stylus CLI tool
-- An Arbitrum node connection (local or testnet)
-- A wallet with test ETH
+- Arbitrum node connection
+- ERC20 token contract deployed
+- Wallet with tokens for betting
 
-## Building
+## Building and Deployment
 
-1. Clone the repository
-2. Install dependencies:
-
-```bash
-cargo build
-```
-
-3. Build for deployment:
+1. Build the contract:
 
 ```bash
 cargo stylus build
 ```
 
-## Deployment
-
-Deploy to Arbitrum Stylus network:
+2. Deploy to Arbitrum Stylus network:
 
 ```bash
 cargo stylus deploy \
@@ -83,63 +115,80 @@ cargo stylus deploy \
   --private-key <YOUR_PRIVATE_KEY>
 ```
 
-## Example Integration
+## Integration Example
 
 ```typescript
-// Logging addresses
+// Initialize contract
+const tx = await contract.init(
+  operator.address,
+  authorizedContract.address,
+  treasury.address,
+  token.address
+);
+
+// Start betting window
 const addresses = ["0x123...", "0x456..."];
-const tx = await contract.log_addresses(addresses);
-const receipt = await tx.wait();
+await contract.start_betting_window(addresses);
 
-// Get address log event
-const logEvent = receipt.events?.find((e) => e.event === "AddressLog");
-
-// Placing a bet
+// Place bet (requires token approval first)
 const selectedAddress = "0x789...";
-const position = true; // betting on positive performance
-const betAmount = ethers.utils.parseEther("0.1");
+const position = true; // betting up
+const amount = ethers.utils.parseEther("100");
 
-const betTx = await contract.place_bet(selectedAddress, position, {
-  value: betAmount,
-});
-const betReceipt = await betTx.wait();
+// Approve tokens first
+await token.approve(contract.address, amount);
 
-// Get bet event
-const betEvent = betReceipt.events?.find((e) => e.event === "BetPlaced");
+// Place bet
+const betTx = await contract.place_bet(
+  bettor.address,
+  selectedAddress,
+  position,
+  amount
+);
 
-// View functions
-const betCount = await contract.get_bet_count();
-const betDetails = await contract.get_bet(0); // get first bet
+// Close window
+await contract.close_betting_window();
+
+// Process payouts
+const winners = [true, false]; // results for each address
+await contract.process_payouts(winners);
 ```
 
-## Security Notes
+## Payout Mechanism
 
-- Public logging function - any address can log addresses
-- Payable betting function - users can place bets with ETH
-- No withdrawal mechanism implemented yet
-- No bet resolution mechanism implemented yet
-- Timestamps are block timestamps
-- Gas costs increase with batch size
-- Users should verify stored bet details after placement
+The contract implements a payout system where:
 
-## Development
+1. Winning pool gets their initial bet back plus a proportion of the losing pool
+2. Proportion is based on bet size relative to total winning pool
+3. If either side has no bets, all funds go to treasury
+4. 10% fee is taken from all bets and sent to treasury
 
-The contract is built using:
+## Security Features
 
-- Arbitrum Stylus SDK
-- Rust programming language
-- EVM events for data storage
-- Storage vectors for persistent data
-- Solidity-compatible event emission
+- Operator-controlled windows
+- ERC20 allowance checks
+- Fee collection system
+- Treasury management
+- Automatic pool calculations
+- Input validation
+- Access control on critical functions
 
-## Future Enhancements
+## Contract States
 
-- Add bet resolution mechanism
-- Implement withdrawal functionality
-- Add time windows for betting periods
-- Add minimum/maximum bet amounts
-- Implement admin controls
-- Add bet cancellation functionality
+The contract can be in two states:
+
+1. Window Active: Betting is allowed
+2. Window Closed: No betting allowed, payouts can be processed
+
+## Storage Layout
+
+- Window status (active/inactive)
+- Valid addresses for current window
+- Bets with bettor, address, position, amount
+- Up/Down amounts per address
+- Operator address
+- Treasury address
+- Token address
 
 ## License
 
